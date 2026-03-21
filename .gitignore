@@ -1,4 +1,5 @@
 # Claude Code framework
+.claude/settings.local.json
 .claude/temp/
 .claude/voice-inbox/*.txt
 .claude/voice-inbox/*.md
