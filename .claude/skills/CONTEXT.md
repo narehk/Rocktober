@@ -149,19 +149,19 @@ Product
 
 | Child Type | Valid Parent Types | Auto-Created? | Gherkin Required? |
 |------------|-------------------|---------------|-------------------|
-| Product | (root) | No | No |
-| Discovery | Product | No | No |
-| Project | Product | No | No |
+| Products | (root) | No | No |
+| Discovery | Products | No | No |
+| Project | Products | No | No |
 | Requirement | Project | No | Yes |
 | Change Order | Project | No | Yes |
-| Planned Work | (from Requirement) | Yes — on approval | No |
-| Unplanned Work | (from Change Order) | Yes — on approval | No |
+| Planned Work | Project (sibling of Requirement, linked via "Duplicate Of") | Yes — on approval | No |
+| Unplanned Work | Project (sibling of Change Order, linked via "Duplicate Of") | Yes — on approval | No |
 | Detail | Planned Work, Unplanned Work | No | No |
 | Task | Detail, Maintenance, Issue | No | No |
 | Constraint | Detail | No | No |
-| Request | Product | No | No |
-| Issue | Product | No | No |
-| Maintenance | Product | No | No |
+| Request | Products | No | No |
+| Issue | Products | No | No |
+| Maintenance | Products | No | No |
 | Bug | Issue | No | No |
 
 #### Acceptance Criteria Format
@@ -193,6 +193,8 @@ Requirements and Change Orders are **frozen on approval** (ADO state: Approved).
 - Edits happen on the execution copy, never the frozen original
 
 #### Type → State Mappings
+
+> *Lifecycle gates (status prerequisites, decomposition checks, review artifact requirements) are enforced by `work.md`. See `work-system.md` "Lifecycle Gates" for the prerequisite matrix and `--force` override semantics.*
 
 ##### Requirement
 
@@ -310,9 +312,42 @@ Requirements and Change Orders are **frozen on approval** (ADO state: Approved).
 ## Doc Provider
 
 - **Provider**: ado
-- **Target**: Digital---Project-Portfolio.wiki
+- **Target**: Digital-Proving-Ground (code wiki, per-Product)
 - **Auto-route**: false
 - **Doc Types**: api, guides, adrs, onboarding
+
+### Wiki Types
+
+| Type | Name | Purpose | Created By |
+|------|------|---------|-----------|
+| **Project Wiki** | `Digital---Project-Portfolio.wiki` | Shared org-level docs for the ADO project | Auto-created by ADO (one per project) |
+| **Product Wiki** (code wiki) | `Digital-Proving-Ground` | Per-Product documentation — wiki for the "Digital Proving Ground" Products item | Created via `az devops wiki create --type codewiki` |
+
+**Important**: Product documentation (reviews, architecture, guides) goes in the **Product wiki** (code wiki), NOT the project wiki. Each Product gets its own code wiki — a separate entry in the ADO wiki dropdown.
+
+### Wiki Structure Convention
+
+Each ADO **Products** item gets one code wiki. All Projects under that Product contribute to the same wiki. ADO org-level search works across all Product wikis.
+
+```
+{Product-Wiki}/
+├── Framework/                    # Framework rules & lifecycle docs
+│   ├── Lifecycle-Gates           # Valid transitions, --force semantics
+│   ├── Work-Decomposition        # Detail/Task breakdown process
+│   └── ADO-Audit-Trail           # Comment protocol, quiz sync
+├── {Project}/                    # Project-specific docs
+│   ├── Reviews/                  # Quiz artifacts linked to work items
+│   │   ├── W-NNN-acceptance-quiz
+│   │   └── W-NNN-author-quiz
+│   ├── Architecture/
+│   └── Guides/
+└── ...
+```
+
+- **Product wiki name convention**: `{Product-Name}.wiki` (hyphens replace spaces)
+- **Project docs path**: `/{Project}/...`
+- **Review artifacts path**: `/{Project}/Reviews/W-NNN-{quiz-type}`
+- **Framework docs path**: `/Framework/...`
 
 ## Work Categories
 

@@ -42,7 +42,7 @@ After 2+ backward moves on the same item, show a nudge: "This item has moved bac
 
 ### Stage History
 
-When an item moves backward, a `## Stage History` section is added to the item file. Stage history is only recorded on backward moves (not forward transitions) to keep items lean.
+When an item moves backward, a `## Stage History` section is added to the item file. Stage history is also recorded on any `--force` override of a lifecycle gate (see below). Normal forward transitions are NOT recorded, to keep items lean.
 
 ```markdown
 ## Stage History
@@ -51,7 +51,54 @@ When an item moves backward, a `## Stage History` section is added to the item f
 |------|------|----|--------|
 | 2026-02-24 | in-review | in-progress | Code review: auth middleware needs refactoring |
 | 2026-02-26 | in-progress | shaping | Discovery: need to rethink token storage approach |
+| 2026-02-27 | in-progress | done | **FORCE**: combined with W-002 in same PR |
 ```
+
+## Valid Transition Matrix
+
+Each `/work` command that changes state has a required source status. Transitions that skip stages are **blocked** unless `--force` is used.
+
+| Command | Required Source Status | Prerequisites | ADO Comment? |
+|---------|----------------------|---------------|-------------|
+| `/work start` | ready | Shaping gate + Decomposition gate (PW/UW types) | Yes |
+| `/work review` | in-progress | — | Yes |
+| `/work done` | in-review | Review gate (author quiz artifact exists) | Yes |
+| `/work move` | (any) | Target-specific gates apply | Yes |
+| `/work skip` | (any except done) | — | Yes |
+
+### Blocked Transitions (require --force)
+
+These transitions skip one or more lifecycle stages. They are **blocked by default** and require `--force "reason"`:
+
+- `captured` → `in-progress` (must pass through `shaping` and `ready`)
+- `in-progress` → `done` (must pass through `in-review`)
+- `ready` → `done` or `in-review` (must pass through `in-progress`)
+- Any transition that skips a required gate
+
+## Lifecycle Gates
+
+Gates are hard prerequisites checked by `/work` commands. They **block execution** unless the prerequisite is met or `--force` is used with a mandatory reason.
+
+| Gate | Checked By | Prerequisite | Force Behavior |
+|------|-----------|-------------|----------------|
+| **Status Gate** | All transitions | Source status matches the command's required source | Logs "status override: {from} → {to}: {reason}" |
+| **Shaping Gate** | `/work start` | `## Problem Statement` and `## Acceptance Criteria` sections exist in item file | Logs "shaping skipped: {reason}" |
+| **Decomposition Gate** | `/work start` | If ADO type is Planned Work or Unplanned Work: child Detail items exist in ADO | Logs "decomposition skipped: {reason}" |
+| **Review Gate** | `/work done` | Author quiz artifact exists in `.claude/artifacts/reviews/` (completed OR declined) | Logs "review bypassed: {reason}" |
+
+### --force Override Semantics
+
+- **Syntax**: `/work <command> <id> --force "reason text"`
+- **Reason is mandatory** — if `--force` is present but reason is empty or missing, reject: "The --force flag requires a reason."
+- **Logged in three places**:
+  1. Item file `## Stage History` section (with `**FORCE**:` prefix in reason column)
+  2. ADO discussion comment (with bold **FORCE OVERRIDE** label)
+  3. Telemetry event with `"forced": true, "forceReason": "..."` fields
+- **Board indicator**: Items that have been force-overridden show `[F]` marker on the board
+
+### Gate Philosophy
+
+Gates exist to make skipping **explicit and auditable**, not to prevent it entirely. The escape hatch exists because real work doesn't always follow the ideal path — but every deviation is recorded. The audit trail enables retrospective analysis: if a team frequently forces past the review gate, that's a signal to revisit the workflow.
 
 ## Blocked Items
 

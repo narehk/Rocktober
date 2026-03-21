@@ -188,6 +188,75 @@ Push a local document to the configured doc provider.
 
 ---
 
+## `/doc publish-review` — Publish Review Artifact to Wiki (Internal)
+
+Publish a quiz artifact from `.claude/artifacts/reviews/` to the Product wiki. This is an internal operation called by `/work review` and `/work done` — not a user-facing subcommand.
+
+### Steps
+
+1. **Resolve doc provider** — Follow Doc Provider Resolution. If local provider, skip wiki publish silently (artifact stays local only).
+2. **Read local quiz artifact** from `.claude/artifacts/reviews/{artifact-filename}.md`
+3. **Determine wiki target path** from CONTEXT.md Doc Provider → Wiki Structure Convention:
+   - Read Product wiki name from `**Target**:` field (this is a **code wiki**, not the project wiki)
+   - Read Project name from the work item's `**Project**:` field
+   - Construct path: `/{Project}/Reviews/W-NNN-{quiz-type}` (e.g., `/Rocktober/Reviews/W-11968-acceptance-quiz`)
+4. **Ensure ancestor pages exist** — Wiki pages require parent pages. Before creating the quiz page, verify (and create if missing) ancestor pages top-down:
+   - `/{Project}` — Project landing page
+   - `/{Project}/Reviews` — Reviews index page
+
+   For ADO REST API approach, all pages (ancestors + quiz) can be created in a single git push to the wiki backing repo, which is more efficient.
+5. **Add work item cross-link** — Include `**ADO Work Item**: [PW #NNN](work_item_url)` in the quiz page metadata so the wiki links back to ADO.
+6. **Create/update wiki page** using provider's wiki publish command:
+   ```bash
+   MSYS_NO_PATHCONV=1 az devops wiki page create --wiki "{product-wiki}" \
+     --path "/{Project}/Reviews/W-NNN-{quiz-type}" \
+     --content "{quiz artifact markdown}" \
+     --org https://dev.azure.com/southbendin -o json
+   ```
+   - **Note**: `MSYS_NO_PATHCONV=1` is required on Windows/Git Bash to prevent `/path` expansion
+   - If page already exists, use `az devops wiki page update` instead (requires `--version` from a prior `az devops wiki page show`)
+7. **Return wiki page URL** — extract from the JSON response. The caller (`/work review` or `/work done`) uses this URL to:
+   a. Add a hyperlink to the ADO work item (with companion discussion comment — see ado.md Hyperlink Companion Pattern)
+   b. Include the URL in the ADO discussion comment
+8. **On failure**: Return `null` URL — the caller falls back to embedding full quiz content in the ADO comment instead. Do not block the workflow for a wiki publish failure.
+
+### Called By
+
+| Caller | When | Quiz Type |
+|--------|------|-----------|
+| `/work review` | After author quiz completion | `author-quiz` |
+| `/work done` | After acceptance quiz completion | `acceptance-quiz` |
+| `/work author-quiz` | After standalone author quiz | `author-quiz` |
+| `/work acceptance-quiz` | After standalone acceptance quiz | `acceptance-quiz` |
+
+---
+
+## `/doc publish-framework` — Publish Framework Docs to Wiki (Internal)
+
+Publish framework lifecycle documentation to the Product wiki. Called during `/setup` or first-run, and when framework rules change.
+
+### Steps
+
+1. **Resolve doc provider** — If local, skip silently.
+2. **Read framework rule files**:
+   - `.claude/rules/work-system.md` → extract Lifecycle Gates, Valid Transition Matrix, --force semantics
+   - `.claude/providers/ado.md` → extract ADO Comment Protocol, Quiz Sync
+3. **Ensure ancestor pages exist** — Create `/Framework` page if it doesn't exist in the Product wiki (code wiki).
+4. **Publish three wiki pages** to the Product wiki (code wiki from `**Target**:` in CONTEXT.md Doc Provider):
+   - `/Framework/Lifecycle-Gates` — valid transitions, gate definitions, --force override semantics
+   - `/Framework/Work-Decomposition` — Detail/Task breakdown process (from `/work decompose` docs)
+   - `/Framework/ADO-Audit-Trail` — comment protocol, quiz sync flow
+   - **Note**: Use `MSYS_NO_PATHCONV=1` on Windows for all wiki path commands
+5. **Report**: "Framework docs published to {wiki}/Framework/"
+
+### When to Publish
+
+- **First-run**: During `/setup` when a Doc Provider with ADO wiki is configured
+- **On framework change**: When `work-system.md` or `ado.md` are modified (manual trigger via `/doc publish-framework`)
+- **Not per-session**: These are published once and updated only when rules change
+
+---
+
 ## `/doc list` — List Documentation
 
 List documentation from the configured provider.

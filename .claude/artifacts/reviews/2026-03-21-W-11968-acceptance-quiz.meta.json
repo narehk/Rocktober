@@ -1,0 +1,11 @@
+{
+  "type": "acceptance-quiz",
+  "workItem": "W-11968",
+  "project": "Rocktober",
+  "created": "2026-03-21",
+  "source": "/work done",
+  "status": "completed",
+  "tags": ["review", "quiz", "acceptance"],
+  "summary": "Acceptance quiz — 2/4",
+  "extra": { "score": "2/4", "questions": 4, "reviewType": "unknown", "scopeDriftDetected": true }
+}

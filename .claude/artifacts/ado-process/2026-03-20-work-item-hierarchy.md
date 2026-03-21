@@ -70,13 +70,36 @@ graph TD
 
 ### Execution
 
-| Type | Purpose | Parent | Notes |
-|------|---------|--------|-------|
-| **Planned Work** | Mutable execution copy of a frozen Requirement. Lives in Org Unit bucket | Requirement | Created after scope approval |
-| **Unplanned Work** | Mutable execution copy of a frozen Change Order. Same structure as Planned Work | Change Order | Tracks un-scoped work |
-| **Detail** (*Feature) | High-level breakdown of work | Planned/Unplanned Work | |
-| **Task** | Lowest level. Measurable implementation bites (hours) | Detail | |
-| **Constraint** | Inevitable issues during development, including defects found during dev. Can impact multiple items. Escalates upward if severe | Detail (attached) | Can escalate to Planned/Unplanned Work |
+| Type | Purpose | ADO Parent | Linked To | Notes |
+|------|---------|------------|-----------|-------|
+| **Planned Work** | Mutable execution copy of a frozen Requirement | **Project** (sibling of Requirement) | Requirement via "Duplicate Of" | Created after scope approval. Same parent as its Requirement — NOT a child of the Requirement |
+| **Unplanned Work** | Mutable execution copy of a frozen Change Order | **Project** (sibling of Change Order) | Change Order via "Duplicate Of" | Same pattern as Planned Work |
+| **Detail** (*Feature) | High-level breakdown of work (one per Gherkin scenario) | Planned/Unplanned Work | | |
+| **Task** | Lowest level. Measurable implementation bites (hours) | Detail | | |
+| **Constraint** | Inevitable issues during development, including defects found during dev. Can impact multiple items. Escalates upward if severe | Detail (attached) | | Can escalate to Planned/Unplanned Work |
+
+### Requirement → Planned Work Relationship (Important)
+
+The frozen Requirement and its mutable Planned Work are **siblings under the Project**, not parent-child. This is by design:
+
+- The Requirement is the **immutable spec** — it stays frozen as the audit-trail record of what was scoped
+- The Planned Work is the **mutable execution copy** — it gets Details, Tasks, and Constraints attached during development
+- They are linked via ADO's **"Duplicate / Duplicate Of"** relation type, which serves as the traceability link between spec and execution
+- Both sit at the same hierarchy level under the Project, so the Project view shows specs and their execution copies side by side
+
+```
+Project #11956: Rocktober
+├── Requirement #11957 (frozen spec)     ──"Duplicate"──→  PW #11967 (execution copy)
+│                                                          ├── Detail (Scenario 1)
+│                                                          │   ├── Task
+│                                                          │   └── Task
+│                                                          └── Detail (Scenario 2)
+│                                                              └── Task
+├── Requirement #11958 (frozen spec)     ──"Duplicate"──→  PW #11968 (execution copy)
+│                                                          └── ...
+```
+
+The Mermaid diagram's `→` arrow ("approved & frozen") represents the spawn/copy action, not a parent-child link. The "Duplicate Of" ADO link provides traceability back to the original spec.
 
 ### Post-Development / Operational
 

@@ -64,6 +64,181 @@ If a type→state mapping is missing for a particular stage, the transition is *
 | `"Duplicate Of"` | `System.LinkTypes.Duplicate-Reverse` | Execution copy → frozen source (PW → Req, UW → CO) |
 | `"Duplicate"` | `System.LinkTypes.Duplicate-Forward` | Frozen source → execution copy (Req → PW, CO → UW) |
 
+## ADO Comment Protocol
+
+Post a structured comment to an ADO work item's discussion thread on every state transition that routes to the provider. Comments create an audit trail visible to anyone viewing the work item in ADO.
+
+### Command Pattern
+
+```bash
+az boards work-item update --id {ado_id} \
+  --discussion "{comment_html}" \
+  --org https://dev.azure.com/southbendin -o json
+```
+
+**Note**: The `--discussion` flag accepts HTML. ADO renders it in the Discussion tab.
+
+### Standard Comment Format
+
+```html
+<div>
+  <b>State Transition</b><br/>
+  <b>From</b>: {old_state} &rarr; <b>To</b>: {new_state}<br/>
+  <b>Triggered by</b>: /work {command}<br/>
+  <b>Date</b>: {YYYY-MM-DD}<br/>
+  {optional context lines — see table below}
+</div>
+```
+
+### Context Lines by Command
+
+| Command | Additional Context |
+|---------|-------------------|
+| `/work start` | Branch name, assignee, decomposition status (N Details / M Tasks, or "skipped") |
+| `/work review` | PR link (if available), author quiz result (score X/Y, or "declined"), wiki page link |
+| `/work done` | Acceptance quiz score, drift summary (N implemented, N drifted), items unblocked, wiki page link |
+| `/work move` | Direction (forward/backward), reason (if backward or forced) |
+| `/work skip` | Resolution category, resolution note |
+| `/work decompose` | Number of Details and Tasks created, list of Detail titles |
+| `--force` override | `<b>⚠️ FORCE OVERRIDE</b>: {reason}` — always bold, always included when --force was used |
+
+### Failure Handling
+
+If the comment post fails (network error, permissions), log the failure locally but **do not block** the state transition. The state transition is the primary action; the comment is secondary. Report: "State transition succeeded but ADO comment failed — will retry on next sync."
+
+## Quiz Sync to ADO
+
+After any quiz (author or acceptance) completes or is declined, perform three actions:
+
+### 1. Publish to Product Wiki
+
+Create/update a wiki page for the quiz artifact:
+
+```bash
+az devops wiki page create --wiki "{product-wiki}" \
+  --path "/{Project}/Reviews/W-NNN-{quiz-type}" \
+  --content @{local_artifact_path} \
+  --encoding utf-8 \
+  --org https://dev.azure.com/southbendin -o json
+```
+
+If the page already exists (retake), use `update` instead of `create`:
+
+```bash
+az devops wiki page update --wiki "{product-wiki}" \
+  --path "/{Project}/Reviews/W-NNN-{quiz-type}" \
+  --content @{local_artifact_path} \
+  --version {etag} \
+  --org https://dev.azure.com/southbendin -o json
+```
+
+The Product wiki name and Project name are read from CONTEXT.md Doc Provider section.
+
+### 2. Add Hyperlink to ADO Work Item
+
+Link the wiki page URL to the work item so it's discoverable from the "Links" tab:
+
+```bash
+az boards work-item relation add --id {ado_id} \
+  --relation-type "Hyperlink" \
+  --target-url "{wiki_page_url}" \
+  --org https://dev.azure.com/southbendin -o json
+```
+
+**Note**: Check for existing hyperlinks to the same path before adding to avoid duplicates (relevant for retakes).
+
+### 3. Post Summary Comment
+
+Post a comment to the ADO discussion thread with a brief summary and link:
+
+**Author Quiz**:
+```html
+<div>
+  <b>Author Quiz</b><br/>
+  <b>Score</b>: {X}/{Y}<br/>
+  <b>Reviewed By</b>: {initials}<br/>
+  <b>Assessment</b>: {1-2 sentence summary}<br/>
+  <a href="{wiki_page_url}">Full quiz artifact</a>
+</div>
+```
+
+**Acceptance Quiz** (includes drift report):
+```html
+<div>
+  <b>Acceptance Quiz</b><br/>
+  <b>Score</b>: {X}/{Y} | <b>Review Type</b>: {self-review|peer-review}<br/>
+  <b>Drift</b>: {N} implemented, {N} not implemented, {N} added outside plan<br/>
+  <b>Assessment</b>: {drift assessment}<br/>
+  <a href="{wiki_page_url}">Full quiz and drift report</a>
+</div>
+```
+
+**Declined Quiz**:
+```html
+<div>
+  <b>{Author|Acceptance} Quiz — Declined</b><br/>
+  <b>Date</b>: {YYYY-MM-DD}<br/>
+  Quiz was skipped. <a href="{wiki_page_url}">Declination record</a>
+</div>
+```
+
+### Failure Handling
+
+If wiki publish or hyperlink fails, fall back gracefully:
+- Wiki fails → post full quiz summary in ADO comment instead of just the link
+- Hyperlink fails → include URL in the comment text as plain text
+- Comment fails → log locally, do not block
+
+## Decompose Operation
+
+Batch creation of Detail and Task items under a Planned Work or Unplanned Work item.
+
+### Steps
+
+1. **Create each Detail**:
+   ```bash
+   az boards work-item create --type "Detail" \
+     --title "{scenario_name}" \
+     --description "{gherkin_given_when_then}" \
+     --project "Digital - Product Portfolio" \
+     --org https://dev.azure.com/southbendin -o json
+   ```
+
+2. **Link Detail to parent PW/UW**:
+   ```bash
+   az boards work-item relation add --id {detail_id} \
+     --relation-type "Parent" \
+     --target-id {pw_ado_id} \
+     --org https://dev.azure.com/southbendin -o json
+   ```
+
+3. **Create Tasks under each Detail** (one per Then/And clause):
+   ```bash
+   az boards work-item create --type "Task" \
+     --title "{assertion_text}" \
+     --project "Digital - Product Portfolio" \
+     --org https://dev.azure.com/southbendin -o json
+   ```
+
+4. **Link Task to parent Detail**:
+   ```bash
+   az boards work-item relation add --id {task_id} \
+     --relation-type "Parent" \
+     --target-id {detail_id} \
+     --org https://dev.azure.com/southbendin -o json
+   ```
+
+5. **Post summary comment** on parent PW/UW item (per Comment Protocol)
+
+### Partial Failure Handling
+
+If creation fails mid-batch:
+- Report what was created and what failed
+- Created items remain (don't roll back)
+- Offer retry for failed items only
+
+---
+
 ## Operations
 
 ### add
@@ -475,6 +650,10 @@ The `az` CLI on Windows (especially under MSYS/Git Bash) has common gotchas:
 | Project names with spaces | URL-encode spaces in `--project` values: `"Digital%20-%20Product%20Portfolio"` or use `--detect true` if defaults are configured |
 | JSON output required | Always use `--output json` for machine-parseable results |
 | Long commands | Use `--detect true` to inherit defaults from `az devops configure` instead of passing `--org` and `--project` on every call |
+| **MSYS path expansion** | Wiki paths starting with `/` get expanded to `C:/Program Files/Git/...` under Git Bash. **Always** prefix wiki commands with `MSYS_NO_PATHCONV=1` |
+| **Task state → Done** | Tasks require **both** a non-empty `Description` **and** `Microsoft.VSTS.Scheduling.DueDate` to transition to Done. Include `--description` and `--fields "Microsoft.VSTS.Scheduling.DueDate=YYYY-MM-DD"` |
+| **Relation type names** | `--relation-type` requires **display names** ("Parent", "Child", "Duplicate Of"), NOT reference names ("System.LinkTypes.Hierarchy-Reverse"). See Relation Type Reference table above |
+| **Empty ADO repos** | New repos have no branch — can't be published as wikis. Use `az rest` to POST to `_apis/git/repositories/{repo}/pushes` to create an initial commit without git auth |
 
 ### Recommended pattern
 
@@ -524,6 +703,53 @@ Extract doc config from the `## Doc Provider` section in CONTEXT.md:
 |-------|----------|---------|
 | `**Target**:` | `WIKI` | `MyProject.wiki` |
 | `**Auto-route**:` | `AUTO_ROUTE` | `true` |
+
+### Code Wiki Creation (Per-Product)
+
+Each ADO Product gets its own **code wiki** — a separate entry in the wiki dropdown, backed by a git repo. This is distinct from the project wiki (auto-created, shared by all products).
+
+1. **Create backing repo**:
+   ```bash
+   az repos create --name "{Product-Name}.wiki" --org "{ORG}" --project "{PROJECT}" -o json
+   ```
+
+2. **Initialize the repo** — Empty repos can't be published as wikis. Use REST API to push an initial commit:
+   ```bash
+   az rest --method post --resource "499b84ac-1321-427f-aa17-267ca6975798" \
+     --uri "https://dev.azure.com/{org}/{project}/_apis/git/repositories/{repo}/pushes?api-version=7.0" \
+     --body @init-body.json
+   ```
+
+3. **Create the code wiki**:
+   ```bash
+   MSYS_NO_PATHCONV=1 az devops wiki create \
+     --name "{Product-Name}" \
+     --type codewiki \
+     --repository "{Product-Name}.wiki" \
+     --mapped-path "/" \
+     --version main \
+     --org "{ORG}" --project "{PROJECT}" -o json
+   ```
+
+4. **Create ancestor pages** before publishing child content. Wiki pages require parent pages to exist first. Either:
+   - Use the REST API push to create multiple pages in a single git commit
+   - Or create pages top-down: `/Project` → `/Project/Reviews` → `/Project/Reviews/artifact`
+
+### Wiki Cross-Linking Pattern
+
+Bidirectional linking between wiki and ADO work items:
+- **Wiki → ADO**: Include `**ADO Work Item**: [PW #NNN](work_item_url)` in wiki page metadata
+- **ADO → Wiki**: Add hyperlink relation + companion discussion comment (see Hyperlink Companion Pattern below)
+
+### Hyperlink Companion Pattern
+
+ADO hyperlinks appear in the Links tab but are not easily discoverable. Always post a companion discussion comment when adding a hyperlink:
+
+```html
+<div><b>Wiki Link: {description}</b><br/>
+View: <a href='{url}'>{display text}</a><br/>
+{optional context: score, review type, etc.}</div>
+```
 
 ### doc_publish
 

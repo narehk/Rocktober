@@ -1,0 +1,14 @@
+{
+  "type": "framework-learnings",
+  "workItem": "",
+  "project": "Rocktober",
+  "created": "2026-03-21",
+  "source": "retroactive-testing",
+  "status": "completed",
+  "tags": ["framework", "learnings", "ado", "wiki", "decomposition"],
+  "summary": "12 framework learnings from retroactive testing of decomposition, ADO comments, and wiki publish",
+  "extra": {
+    "learningsCount": 12,
+    "filesAffected": ["ado.md", "CONTEXT.md", "doc.md", "work.md"]
+  }
+}

@@ -66,6 +66,7 @@ Before executing any routed subcommand, determine the active provider:
 | `ready` | Conditional | Local readiness gate + ADO state stepping + Gherkin validation for Requirements/Change Orders |
 | `author-quiz` | No | Local-only author quiz |
 | `acceptance-quiz` | Optional | Local quiz; queries provider for related-impact items when configured |
+| `decompose` | Yes | ADO batch creation of Detail/Task hierarchy |
 
 ### Dual-Write Pattern
 
@@ -125,6 +126,30 @@ Regenerate BOARD.md from item files manually.
 2. Confirm with the summary printed by the script
 
 ## Command Implementation
+
+### --force Flag Parsing (shared across gated commands)
+
+All gated commands (`start`, `review`, `done`, `move`) accept an optional `--force "reason"` flag.
+
+1. **Parse for `--force`** in the argument string after the item ID
+2. **If `--force` is present**, extract the quoted reason string that follows it
+3. **If `--force` is present but reason is empty/missing**, reject immediately: "The `--force` flag requires a reason. Usage: `/work done W-123 --force \"reason\"`"
+4. **Store `forceReason`** for use in gate checks. If `--force` is not present, `forceReason` is `null`.
+
+### Lifecycle Gate Check (shared helper)
+
+When a gate check fails and `forceReason` is `null`, **block execution** with a clear error message explaining:
+- What gate failed
+- What the prerequisite is
+- How to satisfy it (the normal path)
+- How to override it (`--force "reason"`)
+
+When a gate check fails but `forceReason` is set, **log the override** in three places:
+1. Item file `## Stage History` — add row with `**FORCE**: {reason}` in the Reason column
+2. ADO discussion comment — per ADO Comment Protocol in `ado.md`
+3. Telemetry event — include `"forced": true, "forceReason": "..."` fields
+
+Then continue execution.
 
 ### `/work add <description> [--project <name>] [--assign <initials>]`
 
@@ -245,11 +270,82 @@ Regenerate BOARD.md from item files manually.
    - If current state is **Approved** (already frozen) → Same redirect-with-confirmation flow as Requirements step 4 (Approved), but creates Unplanned Work instead of Planned Work.
 6. **For all other types** — Update item file status to `ready` (existing behavior). If provider is ADO, execute the state transition per type→state mappings.
 
+### `/work decompose <id>`
+
+Break a Planned Work or Unplanned Work item into Detail and Task sub-items in ADO.
+
+1. **Read item file** — Verify ADO type is `Planned Work` or `Unplanned Work`. If not, error: "Decomposition applies to Planned Work and Unplanned Work items only."
+2. **Check for existing children** — Query ADO: `az boards work-item show --id {ado_id} --expand relations --org https://dev.azure.com/southbendin -o json`. Check for `System.LinkTypes.Hierarchy-Forward` (Child) relations. If children exist, show them and ask: "Details already exist. Add more, replace, or done?"
+3. **Read frozen source acceptance criteria** — Read the item referenced by `**Execution Copy Of**:` to get the full Gherkin scenarios. If no Execution Copy Of, read the item's own acceptance criteria.
+4. **Parse Gherkin into Details** — Each `**Scenario**:` block becomes a Detail:
+   - Detail title: Scenario name (e.g., "Repository structure is established")
+   - Detail description: Full Given/When/Then text for that scenario
+5. **Parse Then/And clauses into Tasks** — For each Detail, each `**Then**` and `**And**` assertion becomes a Task:
+   - Task title: The assertion text (e.g., "directories css/, js/, competitions/ exist")
+   - Task parent: The Detail it belongs to
+6. **Present decomposition plan** for approval:
+   ```
+   Proposed decomposition for W-{id}:
+
+   | # | Type | Title | Parent |
+   |---|------|-------|--------|
+   | 1 | Detail | Repository structure is established | W-{id} |
+   | 2 | Task | directories css/, js/, competitions/ exist | Detail #1 |
+   | 3 | Task | index.html exists at root | Detail #1 |
+   | 4 | Detail | Static site loads with 80s aesthetic | W-{id} |
+   | ... |
+   ```
+   Present AskUserQuestion: Approve / Edit / Cancel
+7. **If Approve — Batch create in ADO** via the decompose operation in `ado.md`:
+   a. Create each Detail, link to parent PW/UW
+   b. Create each Task, link to parent Detail. **Important**: Tasks require a `--description` (non-empty) to support future state transitions. Use the assertion text as the description.
+   c. When transitioning Tasks to Done retroactively, also set `--fields "Microsoft.VSTS.Scheduling.DueDate=YYYY-MM-DD"` (required by ADO Task type for Done state)
+   d. Create local mirror files for Details (W-NNN.md with ADO parent link). Tasks are NOT mirrored locally — they are leaf-level ADO items tracked via the Detail.
+8. **Record decomposition on parent** — Add `## Decomposition` section to the PW/UW item file:
+   ```markdown
+   ## Decomposition
+
+   | Detail | ADO ID | Local ID | Tasks |
+   |--------|--------|----------|-------|
+   | Repository structure is established | #12001 | W-NNN | 3 |
+   | Static site loads with 80s aesthetic | #12002 | W-NNN | 5 |
+   ```
+9. **Post ADO comment** on the PW/UW item per Comment Protocol: "Decomposed into N Details and M Tasks."
+10. **Emit telemetry event**:
+    ```json
+    { "ts": "<ISO 8601>", "type": "command", "command": "/work decompose", "item": "<id>", "project": "<project>", "outcome": "completed", "context": { "details": <N>, "tasks": <M> } }
+    ```
+
 ### `/work start <id>`
 
 0. **Resolve provider** — Follow Provider Resolution steps. If provider is not local, execute external state transition to In Progress (see provider file for `start` operation).
-1. **Update item file** status to `in-progress`
-2. **Check assignment**: If CONTEXT.md has a Team Members section and the item has no assignee, prompt for assignment:
+1. **Status Gate** — Read the item's current status. If status is not `ready`:
+   - Without `--force`: **Block**: "Cannot start W-{id} — current status is '{status}'. Item must be 'ready' before starting. Run `/work ready {id}` first, or use `--force \"reason\"` to override."
+   - With `--force`: Log override per Lifecycle Gate Check, continue.
+2. **Shaping Gate** — Scan the item file for `## Problem Statement` and `## Acceptance Criteria` sections. If either is missing:
+   - Without `--force`: **Block**: "Cannot start W-{id} — missing [Problem Statement / Acceptance Criteria]. Run `/work refine {id}` first, or use `--force \"reason\"` to override."
+   - With `--force`: Log "shaping skipped: {reason}" per Lifecycle Gate Check, continue.
+   - If both sections present: pass silently.
+3. **Decomposition Gate** — Read the item's ADO type. If type is `Planned Work` or `Unplanned Work`:
+   a. Query ADO for child items: `az boards work-item show --id {ado_id} --expand relations --org https://dev.azure.com/southbendin -o json` — check for Child relations.
+   b. If child items exist: pass silently.
+   c. If no child items found, present AskUserQuestion:
+      ```javascript
+      {
+        question: "No Detail sub-items found for this Planned Work. Decompose into Details and Tasks first?",
+        header: "Decompose",
+        options: [
+          { label: "Decompose now (Recommended)", description: "Run /work decompose to break down into Details and Tasks in ADO" },
+          { label: "Skip", description: "Proceed without decomposition — requires --force reason" }
+        ],
+        multiSelect: false
+      }
+      ```
+   d. If "Decompose now": Execute `/work decompose {id}` steps, then continue.
+   e. If "Skip": Require `--force` reason. Without `--force`: **Block**. With `--force`: Log "decomposition skipped: {reason}", continue.
+   f. If ADO type is not PW/UW: skip this gate entirely.
+4. **Update item file** status to `in-progress`
+5. **Check assignment**: If CONTEXT.md has a Team Members section and the item has no assignee, prompt for assignment:
       ```javascript
       {
         question: "Who is working on this item?",
@@ -264,33 +360,17 @@ Regenerate BOARD.md from item files manually.
       }
       ```
       If Team Members is not configured in CONTEXT.md, skip this step entirely.
-3. **Ask for branch name**: Read CONTEXT.md for a Git Workflow section. If branch naming conventions are configured (e.g., `<type>/<id>-<slug>`), suggest a branch name following that pattern (e.g., `feat/W-001-user-auth`). If no Git Workflow section exists, suggest based on title as before.
-4. **Record branch in item file**
-5. **Git guidance output** — Per `git-guidance.md`, read the user's Git Comfort level from CONTEXT.md Team Members table and output branch creation guidance:
+6. **Ask for branch name**: Read CONTEXT.md for a Git Workflow section. If branch naming conventions are configured (e.g., `<type>/<id>-<slug>`), suggest a branch name following that pattern (e.g., `feat/W-001-user-auth`). If no Git Workflow section exists, suggest based on title as before.
+7. **Record branch in item file**
+8. **Post ADO comment** — Per Comment Protocol in `ado.md`, post a comment on the work item with: state transition, branch name, assignee, decomposition status.
+9. **Git guidance output** — Per `git-guidance.md`, read the user's Git Comfort level from CONTEXT.md Team Members table and output branch creation guidance:
    - `guided`: "Created branch `<name>` — this is your isolated workspace. Nothing here affects the main codebase until you choose to share it. **Next step**: Make your changes, then run `/commit` when ready to save a checkpoint."
    - `terse`: "Created branch `<name>`. **Next step**: `/commit` when ready."
-6. **Emit telemetry event** (fire-and-forget) — Append one JSON line to the current session file in `.claude/patterns/sessions/`:
+10. **Emit telemetry event** (fire-and-forget) — Append one JSON line to the current session file in `.claude/patterns/sessions/`:
    ```json
-   { "ts": "<ISO 8601>", "type": "command", "command": "/work start", "item": "<id>", "project": "<project>", "outcome": "completed", "context": { "branchCreated": true, "assigned": <bool> } }
+   { "ts": "<ISO 8601>", "type": "command", "command": "/work start", "item": "<id>", "project": "<project>", "outcome": "completed", "context": { "branchCreated": true, "assigned": <bool>, "forced": <bool> } }
    ```
-   `assigned` is `true` if the item has an assignee after this step, `false` otherwise. If the write fails, silently skip.
-7. **Check for shaping completeness** — Scan the item file for `## Problem Statement` and `## Acceptance Criteria` sections. If either is missing, warn:
-   > "This item is missing [Problem Statement / Acceptance Criteria]. Consider running `/work refine W-NNN` first."
-
-   Present AskUserQuestion:
-   ```javascript
-   {
-     question: "This item is missing shaping fields. Proceed without full shaping?",
-     header: "Shaping",
-     options: [
-       { label: "Yes, proceed", description: "Enter plan mode with available context" },
-       { label: "Refine first", description: "Stop here — run /work refine to shape the item" }
-     ],
-     multiSelect: false
-   }
-   ```
-   If user selects "Refine first", stop. Don't block — user can override with "Yes, proceed".
-   If both sections are present, skip this step silently.
+   If the write fails, silently skip.
 
 8. **Gather plan mode context** — Read the full item file. Build the plan mode seed:
 
@@ -323,8 +403,11 @@ Regenerate BOARD.md from item files manually.
 ### `/work review <id>`
 
 0. **Resolve provider** — Follow Provider Resolution steps. If provider is not local, execute external state transition to In Review (see provider file for `review` operation).
-1. **Update item file** status to `in-review`
-2. **Record PR link** if provided
+1. **Status Gate** — Read the item's current status. If status is not `in-progress`:
+   - Without `--force`: **Block**: "Cannot review W-{id} — current status is '{status}'. Item must be 'in-progress'. Run `/work start {id}` first, or use `--force \"reason\"` to override."
+   - With `--force`: Log override per Lifecycle Gate Check, continue.
+2. **Update item file** status to `in-review`
+3. **Record PR link** if provided
 4. **Author quiz** — After completing the status transition, present a comprehension quiz focused on key decisions made during implementation:
 
    a. **Offer opt-out** via AskUserQuestion:
@@ -430,6 +513,12 @@ Regenerate BOARD.md from item files manually.
          ```
       3. **Report**: "Author quiz skipped — declination recorded."
 
+5. **Quiz sync to ADO** — After the author quiz (whether completed or declined):
+   a. **Publish quiz artifact to Product wiki** — per Quiz Sync protocol in `ado.md`, create/update wiki page at `/{Project}/Reviews/W-NNN-author-quiz`
+   b. **Add hyperlink** to ADO work item pointing to the wiki page
+   c. **Post ADO comment** — per Comment Protocol in `ado.md`, post state transition comment with quiz result summary and wiki page link
+   d. If wiki publish fails, post the full quiz summary in the ADO comment instead (fallback per `ado.md` failure handling)
+
 ### `/work author-quiz <id>`
 
 Generate and present the author quiz as a standalone subcommand. Useful if the user skipped during `/work review` and wants to take it later, or wants to retake.
@@ -444,10 +533,16 @@ Generate and present the author quiz as a standalone subcommand. Useful if the u
 ### `/work done <id>`
 
 0. **Resolve provider** — Follow Provider Resolution steps. If provider is not local, execute external state transition to Done (see provider file for `done` operation). For ADO, this also resolves predecessor links. For GitHub, this closes the issue.
-1. **Check for author quiz artifact** (informational, non-blocking): Scan `.claude/artifacts/reviews/` for a file matching `*-<id>-author-quiz.md`. Note presence/absence — used later for self-review detection. Do not prompt or block if missing.
-2. **Update item file** with completion notes
+1. **Status Gate** — Read the item's current status. If status is not `in-review`:
+   - Without `--force`: **Block**: "Cannot complete W-{id} — current status is '{status}'. Item must be 'in-review'. Run `/work review {id}` first, or use `--force \"reason\"` to override."
+   - With `--force`: Log override per Lifecycle Gate Check, continue.
+2. **Review Gate** — Scan `.claude/artifacts/reviews/` for a file matching `*-<id>-author-quiz.md`:
+   - If artifact found (completed OR declined): Gate passes. Note presence for self-review detection later.
+   - If artifact NOT found AND no `--force`: **Block**: "No review artifact found for W-{id}. Run `/work review {id}` first to complete the author quiz (or decline it), then retry. Or use `--force \"reason\"` to bypass."
+   - If artifact NOT found AND `--force`: Log "review bypassed: {forceReason}" per Lifecycle Gate Check. Continue.
+3. **Update item file** with completion notes
    b. **Set `**Completed**: YYYY-MM-DD`** in item file metadata (today's date)
-3. **Move item file** to `.claude/work/archive/`
+4. **Move item file** to `.claude/work/archive/`
 4. **Acceptance quiz** — After completing the status transition, present the acceptance verification quiz:
 
    a. **Offer opt-out** via AskUserQuestion:
@@ -545,6 +640,11 @@ Generate and present the author quiz as a standalone subcommand. Useful if the u
           }
           ```
       11. **Report**: score + drift summary (e.g., "Acceptance quiz completed: 4/5. Drift detected: 1 criterion not implemented, 1 added outside plan.")
+      12. **Sync quiz to ADO** — If provider is not local, execute the three-step quiz sync (see `ado.md` → Quiz Sync to ADO):
+          a. **Publish to Product wiki**: Create wiki page at `/{Project}/Reviews/W-NNN-acceptance-quiz` with the full quiz artifact markdown
+          b. **Add hyperlink to ADO work item**: Link the wiki page URL to the work item
+          c. **Post summary comment** to ADO discussion thread: acceptance quiz score, review type, drift report table, and wiki page link
+          d. On wiki publish failure: embed full quiz content in the ADO comment instead. On hyperlink failure: include URL as plain text in comment.
 
    c. **If Skip** — Store declination artifact:
       1. **Store declination artifact** in `.claude/artifacts/reviews/YYYY-MM-DD-W-NNN-acceptance-quiz.md`:
@@ -595,10 +695,19 @@ Generate and present the acceptance quiz as a standalone subcommand. Useful for 
 
 ### `/work move <id> <stage>`
 
-0. **Resolve provider** — Follow Provider Resolution steps. If provider is not local, the external state transition is executed in step 4 below.
+0. **Resolve provider** — Follow Provider Resolution steps. If provider is not local, the external state transition is executed in step 6 below.
 1. **Validate stage** is one of: captured, shaping, ready, in-progress, in-review, done, skipped
 2. **Detect direction**: Compare current stage to target stage using lifecycle order (captured=0, shaping=1, ready=2, in-progress=3, in-review=4, done=5). If target < current, it's a backward move.
-3. **If backward move**:
+3. **If forward move — Validate transition against matrix** (see `work-system.md` → Valid Transition Matrix → Blocked Transitions):
+   - Check if the transition skips one or more lifecycle stages (e.g., `captured` → `in-progress`, `in-progress` → `done`, `ready` → `in-review`)
+   - If transition skips stages AND no `--force`: **Block**: "Moving from {current} to {target} skips required stages. Use `--force \"reason\"` to override."
+   - If `--force`: Run **Lifecycle Gate Check** (block-or-log) — log in Stage History with `**FORCE**:` prefix, post ADO comment with **FORCE OVERRIDE** label, continue
+   - **Target-specific gates also apply on forward moves**:
+     - Moving to `in-progress`: Shaping Gate + Decomposition Gate (same as `/work start`)
+     - Moving to `done`: Review Gate (same as `/work done`)
+     - Moving to `in-review`: no additional gates beyond status
+   - If a target-specific gate fails AND no `--force`: Block with the gate-specific error message
+4. **If backward move**:
    a. Ask for a reason conversationally (reasons are open-ended, not menu options): "What's the reason for moving this backward?"
    b. Record the backward move in the item's `## Stage History` section (create section if it doesn't exist)
    c. Apply semantics from the backward transition table in `work-system.md`:
@@ -608,9 +717,10 @@ Generate and present the acceptance quiz as a standalone subcommand. Useful for 
       - In Progress → Shaping: Keep branch (if useful), add open questions
       - Ready → Shaping: Update item with new questions
    d. Count backward moves in Stage History. If 2+, show nudge: "This item has moved backward N times — consider splitting it."
-4. **If provider is not local** — Execute external state transition (see provider file for `move` operation). If the provider rejects the transition (e.g., ADO invalid state for that type), report as blocking error with valid transitions.
-5. **Update item file** status
-6. **If moving to done**, also archive the file
+5. **Post ADO comment** — If provider is not local, post a state transition comment to ADO (see `ado.md` → ADO Comment Protocol). Include force override context if applicable.
+6. **If provider is not local** — Execute external state transition (see provider file for `move` operation). If the provider rejects the transition (e.g., ADO invalid state for that type), report as blocking error with valid transitions.
+7. **Update item file** status
+8. **If moving to done**, also archive the file
 
 ### `/work block <id> --on <blocker>`
 
