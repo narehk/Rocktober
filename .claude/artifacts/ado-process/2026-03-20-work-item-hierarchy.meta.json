@@ -1,0 +1,10 @@
+{
+  "type": "architecture",
+  "workItem": null,
+  "project": "Rocktober",
+  "created": "2026-03-20",
+  "source": "conversation",
+  "status": "approved",
+  "tags": ["ado", "process-template", "hierarchy", "work-items", "gherkin"],
+  "summary": "ADO work item hierarchy for Digital Product Portfolio process template — types, relationships, freeze rules, and escalation paths"
+}

@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git:*)",
+      "Bash(az:*)",
+      "Bash(gh:*)",
+      "Bash(python:*)",
+      "Bash(python3:*)",
+      "Bash(cmd:*)",
+      "Bash(cmd.exe:*)",
+      "Bash(powershell.exe:*)",
+      "Bash(tr:*)",
+      "Bash(xargs:*)",
+      "Bash(test:*)",
+      "Bash(nvm:*)",
+      "Bash(winget:*)",
+      "Bash(wrangler:*)",
+      "Bash(claude:*)",
+      "Bash(cd:*)",
+      "Bash(node:*)",
+      "Bash(\"/c/Program Files/nodejs/node\":*)",
+      "Bash(PYTHONIOENCODING=utf-8:*)",
+      "Bash(MSYS_NO_PATHCONV=1:*)",
+      "Bash(NODE=:*)",
+      "Bash(ls:*)",
+      "WebSearch",
+      "WebFetch(domain:www.banani.co)",
+      "WebFetch(domain:wisprflow.ai)",
+      "mcp__mcp-registry__search_mcp_registry",
+      "Bash(\"/c/Program Files/nodejs/node\" -e \":*)",
+      "Bash('/c/Program Files/nodejs/node' -e \":*)"
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "node \"C:/Users/kerry.joseph/GIT/Rocktober/.claude/scripts/statusline.js\""
+  }
+}

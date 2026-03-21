@@ -1,0 +1,10 @@
+{
+  "type": "framework-issue",
+  "workItem": null,
+  "project": "WorkSpaceFramework",
+  "created": "2026-03-20",
+  "source": "user-feedback",
+  "status": "open",
+  "tags": ["framework", "rules", "consultation-first", "context-drift", "meta"],
+  "summary": "Claude violates behavioral rules under long context — needs structural guardrails (distributed CLAUDE.md, rule tiers, or hooks)"
+}

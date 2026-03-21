@@ -1,0 +1,147 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code when working with code in this repository.
+
+## Project Overview
+
+Rocktober — A daily themed playlist competition where group members each submit a song matching the day's theme, then vote on a winner. 80s arcade meets hair metal aesthetic. Git-as-backend architecture.
+
+## Repository Structure
+
+```
+Rocktober/
+├── CLAUDE.md                    # This file
+├── index.html                   # Main app — pure HTML
+├── css/
+│   └── styles.css               # Hand-crafted 80s arcade aesthetic
+├── js/
+│   └── app.js                   # Vanilla JS — zero dependencies
+├── competitions/                # JSON data (the "database")
+│   └── <competition-slug>/
+│       ├── config.json          # Competition settings & members
+│       ├── rounds/              # One JSON per day
+│       └── leaderboard.json     # Computed standings
+├── .github/
+│   └── workflows/               # GitHub Actions (scheduling)
+├── worker/                      # Cloudflare Worker (Spotify proxy)
+├── docs/                        # Project documentation
+├── .claude/
+│   ├── settings.local.json      # Permissions & config
+│   ├── work/                    # Work tracking
+│   │   ├── BOARD.md             # Generated kanban board (gitignored)
+│   │   ├── items/               # Active work items (source of truth)
+│   │   └── archive/             # Completed items
+│   ├── artifacts/               # Feature implementation notes
+│   ├── temp/                    # Scratch work (gitignored)
+│   ├── memory/                  # Session persistence
+│   ├── rules/                   # Behavioral rules
+│   │   ├── tech-stack.md        # Project-specific tech stack rules
+│   │   └── domain-patterns.md   # Project-specific domain patterns
+│   ├── providers/               # Work provider routing (local, ado, github)
+│   ├── skills/                  # Expert skills (auto-discovered)
+│   │   ├── REGISTRY.md          # Skill directory
+│   │   └── CONTEXT.md           # Project technical context
+│   └── commands/                # Slash commands
+└── docs/                        # Project documentation
+```
+
+## Tech Stack
+
+- **Frontend**: Pure HTML/CSS/JS — no frameworks, no build step, no node_modules
+- **Hosting**: GitHub Pages (free)
+- **Database**: JSON files in the repo (git history = audit trail)
+- **Scheduling**: GitHub Actions cron jobs
+- **Music Search**: Spotify Web API via Cloudflare Worker proxy
+- **Notifications**: Teams Incoming Webhooks (extensible provider pattern)
+- **Styling**: Hand-crafted CSS — CRT scanlines, neon glow, pixel fonts, chrome text
+
+See `.claude/skills/CONTEXT.md` for detailed technical context.
+
+## Expert Panel Skills
+
+This project uses a "panel of experts" approach. Skills are auto-discovered from `.claude/skills/`.
+
+| Skill | Expert | Use For |
+|-------|--------|---------|
+| `expert-architect` | Chief Architect | System design, tech decisions, conflict resolution |
+| `expert-frontend` | Frontend Engineer | UI architecture, components, styling |
+| `expert-backend` | Backend Engineer | APIs, data layer, server-side logic |
+| `expert-ux` | UX Designer | Usability, accessibility, visual design |
+| `expert-security` | Security Specialist | Auth, permissions, OWASP |
+| `expert-testing` | Testing Engineer | Test strategy, QA |
+| `expert-devops` | DevOps Engineer | Deployment, CI/CD |
+| `expert-docs` | Documentation | API docs, user guides |
+| `code-review` | Code Reviewer | Quality review, security checks |
+| `research` | Research Agent (Haiku) | Fast codebase searches |
+| `ideate` | Idea Refiner | Work item shaping and refinement |
+| `prototype` | Prototyper | Rapid UI prototyping |
+| `verify-app` | Verification Specialist | Pre-commit and pre-PR validation |
+
+## Slash Commands
+
+| Command | Purpose |
+|---------|---------|
+| `/work` | Manage work items: capture, refine, implement, complete |
+| `/commit` | Generate commit message, stage files, create commit |
+| `/pr` | Create pull request with auto-generated summary |
+| `/test` | Run project test suite |
+| `/review` | Thorough code review |
+| `/research` | Quick codebase search with Haiku |
+| `/simplify` | Review code for unnecessary complexity |
+| `/verify` | Full verification loop (lint, test, build, health) |
+| `/prototype` | Rapid UI prototyping |
+| `/design-review` | Validate against design system |
+| `/voice` | Process voice memos from inbox |
+| `/sketch` | pencil.dev design system integration |
+| `/cronitor` | Implement Cronitor telemetry monitoring |
+| `/artifacts` | Query, browse, and manage artifact registry |
+| `/doc` | Generate, publish, and sync project documentation |
+| `/patterns` | Interaction analytics — analyze usage patterns and insights |
+
+## Work Tracking
+
+**Typical workflow**: `/work add` → `/work refine` → `/work ready` → `/work start` → code → `/test` → `/review` → `/verify` → `/commit` → `/pr` → `/work done`
+
+## Key Principles
+
+1. **Governance**: You are the architect. Claude suggests and challenges but never over-executes.
+2. **Consultation First**: Discuss before implementing. Slash commands are the exception.
+3. **Artifact First**: Show before you build. Non-trivial changes need visual artifacts first.
+4. **Visual Workflow**: Diagrams and mockups over walls of text.
+
+## File Organization
+
+| Content Type | Location | Lifecycle |
+|-------------|----------|-----------|
+| Feature backlog | `.claude/work/BOARD.md` | Generated from item files (gitignored) |
+| Work items | `.claude/work/items/` | Active during development |
+| Completed work | `.claude/work/archive/` | Preserved context |
+| Feature artifacts | `.claude/artifacts/<feature>/` | Archived when complete |
+| Temporary scratch | `.claude/temp/` | Gitignored, ephemeral |
+| User docs | `docs/` | Long-term, versioned |
+
+## Workflow Templates
+
+### Feature Implementation
+1. `/work add "description"` — Capture
+2. `/work refine <id>` — Shape it
+3. `/work ready <id>` — Mark ready
+4. `/work start <id>` — Begin
+5. Code → `/test` → `/review` → `/verify`
+6. `/commit` → `/pr`
+7. `/work done <id>` — Archive
+
+### Bug Fix
+1. Reproduce → Diagnose → Fix
+2. `/test` → `/verify` → `/commit`
+
+### Design-First Feature
+1. `/sketch` or `/prototype` — Visual artifact
+2. Review → Iterate → Approve
+3. Implement → `/design-review` → `/commit`
+
+## Context Management
+
+- Use `/clear` between unrelated tasks
+- Use `/compact` mid-task when context fills
+- Status bar shows context usage (green/yellow/red)

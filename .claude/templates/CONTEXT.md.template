@@ -1,0 +1,174 @@
+# Project Context
+
+Shared technical context for all {{PROJECT_NAME}} skills.
+
+**Last Updated**: {{DATE}}
+**Framework Version**: {{FRAMEWORK_VERSION}}
+
+## Tech Stack
+
+### Backend
+| Component | Technology | Notes |
+|-----------|------------|-------|
+{{BACKEND_STACK}}
+
+### Frontend
+| Component | Technology | Notes |
+|-----------|------------|-------|
+{{FRONTEND_STACK}}
+
+### Infrastructure
+| Component | Technology | Notes |
+|-----------|------------|-------|
+{{INFRA_STACK}}
+
+## Project Structure
+
+```
+{{PROJECT_STRUCTURE}}
+```
+
+## Key Patterns
+
+{{KEY_PATTERNS}}
+
+## Test Commands
+
+| Suite | Command | Description |
+|-------|---------|-------------|
+{{TEST_COMMANDS}}
+
+## Verify Steps
+
+| Step | Command | Mode |
+|------|---------|------|
+{{VERIFY_STEPS}}
+
+## Design System
+
+{{DESIGN_SYSTEM}}
+
+## Environment Variables
+
+{{ENV_VARS}}
+
+## Development Workflow
+
+{{DEV_WORKFLOW}}
+
+## Team Members
+
+{{TEAM_MEMBERS}}
+
+<!-- Example format (uncomment and fill when team size > 1):
+| Name | GitHub Username | Role | Initials | Git Comfort |
+|------|----------------|------|----------|-------------|
+| Nareh Harutyunyan | nareh-dev | Lead Developer | NH | terse |
+| Jane Doe | janedoe | Frontend Developer | JD | guided |
+-->
+
+## Git Workflow
+
+{{GIT_WORKFLOW}}
+
+<!-- Example format (uncomment and fill when team has branch conventions):
+- **Branch naming**: `<type>/<id>-<slug>` (e.g., `feat/W-001-user-auth`, `fix/W-012-login-bug`)
+- **Types**: feat, fix, chore, docs, refactor, test
+- **Base branch**: main
+- **Merge strategy**: squash
+- **Protected branches**: main
+-->
+
+## Work Provider
+
+{{WORK_PROVIDER}}
+
+<!-- Provider configuration — uncomment and fill for your project's work tracking backend.
+
+### ADO Example
+
+- **Provider**: ado
+- **Organization**: https://dev.azure.com/yourorg
+- **Project**: Your Project Name
+- **Process Template**: Your Process Template
+- **CLI**: az boards (requires az CLI + azure-devops extension)
+
+#### Work Item Hierarchy
+
+Products → Projects → Planned Work → Details → Tasks
+
+#### Type → State Mappings
+
+##### Task (default for `/work add`)
+
+| Our Stage | ADO State |
+|-----------|-----------|
+| Captured | To Do |
+| Shaping | To Do |
+| Ready | To Do |
+| In Progress | Doing |
+| In Review | Testing |
+| Done | Done |
+
+(Add mappings for each type in your process template — see .claude/providers/ado.md for the full set)
+
+### GitHub Example
+
+- **Provider**: github
+- **Repository**: owner/repo (or auto-detect from git remote)
+
+### Local (default — no config needed)
+
+- **Provider**: local
+-->
+
+## Doc Provider
+
+{{DOC_PROVIDER}}
+
+<!-- Doc Provider configuration — uncomment and fill for your project's documentation backend.
+     Doc Provider is independent of Work Provider — you can use ADO for work and GitHub for docs.
+
+### ADO Wiki Example
+
+- **Provider**: ado
+- **Target**: MyProject.wiki
+- **Auto-route**: false
+- **Doc Types**: api, guides, adrs, onboarding
+
+### GitHub Example
+
+- **Provider**: github
+- **Target**: wiki (or docs/ for repo-committed docs)
+- **Auto-route**: false
+- **Doc Types**: api, guides, adrs, onboarding
+
+### Local (default — no config needed)
+
+- **Provider**: local
+- **Target**: docs/
+-->
+
+## Work Categories
+
+{{WORK_CATEGORIES}}
+
+<!-- Default categories (customize for your project):
+- ui — User interface and visual design
+- backend — Server-side logic and APIs
+- infrastructure — Build, deploy, CI/CD, tooling
+- performance — Speed, optimization, caching
+- security — Auth, permissions, vulnerability fixes
+- docs — Documentation and developer experience
+
+Add project-specific categories as needed (e.g., integration, monitoring, data, mobile).
+-->
+
+## Current Status
+
+{{PROJECT_STATUS}}
+
+<!-- Example values: Pre-launch, Active Development, Maintenance, Sunset
+Briefly describe the project's current phase and any relevant context:
+e.g., "Active Development — building v1 features, targeting Q2 launch"
+-->

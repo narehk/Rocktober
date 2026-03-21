@@ -1,0 +1,63 @@
+---
+paths:
+  - "{{SOURCE_PATHS}}"
+priority: 10
+---
+
+# {{PROJECT_NAME}} Tech Stack Rules
+
+## Language & Framework
+
+{{LANGUAGE_RULES}}
+
+<!-- Example:
+- **Runtime**: Node.js 20+ with ESM modules
+- **Framework**: Next.js 14 with App Router
+- **Language**: TypeScript strict mode — no `any` types in production code
+- **Top-level await**: enabled
+-->
+
+## Code Style
+
+{{CODE_STYLE_RULES}}
+
+<!-- Example:
+- **Formatting**: Prettier with project .prettierrc
+- **Linting**: ESLint with @typescript-eslint/recommended
+- **Imports**: Use path aliases (e.g., `@/components/Button`) not relative paths
+- **Naming**: camelCase for functions/variables, PascalCase for components/types
+-->
+
+## Patterns
+
+{{PATTERN_RULES}}
+
+<!-- Example:
+- **State management**: Zustand for global state, React Query for server state
+- **Component pattern**: Composition over inheritance, co-locate styles with components
+- **Error boundaries**: Wrap each route segment in an error boundary
+- **Data fetching**: Server Components for initial load, client-side for interactions
+-->
+
+## Database
+
+{{DATABASE_RULES}}
+
+<!-- Example:
+- **ORM**: Prisma with typed client generation
+- **Migrations**: Always use Prisma Migrate, never raw SQL in production
+- **Naming**: snake_case for tables and columns, singular table names (user not users)
+- **Soft deletes**: Use deleted_at timestamp, never hard delete user data
+-->
+
+## API Conventions
+
+{{API_RULES}}
+
+<!-- Example:
+- **Style**: REST with JSON request/response bodies
+- **Versioning**: URL prefix (/api/v1/)
+- **Auth**: Bearer token in Authorization header
+- **Errors**: { "error": { "code": "NOT_FOUND", "message": "..." } } format
+- **Pagination**: cursor-based with `?cursor=X&limit=N`
+-->

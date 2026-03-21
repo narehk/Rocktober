@@ -1,0 +1,25 @@
+# Claude Code framework
+.claude/temp/
+.claude/voice-inbox/*.txt
+.claude/voice-inbox/*.md
+!.claude/voice-inbox/.gitkeep
+
+# Generated board (derived from item files)
+.claude/work/BOARD.md
+
+# Pattern sessions (telemetry)
+.claude/patterns/sessions/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/settings.json
+
+# Cloudflare Worker
+worker/node_modules/
+worker/.wrangler/

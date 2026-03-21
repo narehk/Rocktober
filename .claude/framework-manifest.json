@@ -1,0 +1,28 @@
+{
+  "version": "0.1.0",
+  "installed": "2026-03-19",
+  "files": [
+    "CLAUDE.md",
+    ".claude/settings.local.json",
+    ".claude/framework-version",
+    ".claude/rules/roles-and-governance.md",
+    ".claude/rules/consultation-first.md",
+    ".claude/rules/artifact-first.md",
+    ".claude/rules/user-interaction.md",
+    ".claude/rules/file-organization.md",
+    ".claude/rules/visual-workflow.md",
+    ".claude/rules/voice-memo-workflow.md",
+    ".claude/rules/work-system.md",
+    ".claude/rules/documentation-standards.md",
+    ".claude/rules/monitoring-observability.md",
+    ".claude/rules/error-recovery.md",
+    ".claude/rules/git-guidance.md",
+    ".claude/rules/tech-stack.md",
+    ".claude/rules/domain-patterns.md",
+    ".claude/providers/provider.md",
+    ".claude/providers/local.md",
+    ".claude/providers/ado.md",
+    ".claude/providers/github.md",
+    ".claude/scripts/statusline.js"
+  ]
+}

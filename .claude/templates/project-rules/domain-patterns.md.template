@@ -1,0 +1,59 @@
+---
+paths:
+  - "{{DOMAIN_PATHS}}"
+priority: 12
+---
+
+# {{PROJECT_NAME}} Domain Patterns
+
+## Domain Concepts
+
+{{DOMAIN_CONCEPTS}}
+
+<!-- Example:
+- **Permit**: A formal authorization to perform a regulated activity. Has a lifecycle: Draft → Submitted → Under Review → Approved/Denied → Expired.
+- **Applicant**: A person or organization requesting a permit. May have multiple active permits.
+- **Inspection**: A scheduled or ad-hoc review of permit compliance. Always linked to a permit.
+- **Violation**: A documented non-compliance finding from an inspection. Has severity levels: Minor, Major, Critical.
+
+TODO: List your project's core domain entities and their relationships.
+-->
+
+## Business Rules
+
+{{BUSINESS_RULES}}
+
+<!-- Example:
+- A permit cannot be approved without at least one completed inspection
+- Expired permits cannot be renewed — a new application is required
+- Critical violations trigger automatic permit suspension
+- Applicants with 3+ active violations cannot submit new applications
+
+TODO: List invariants and constraints that the system must enforce.
+-->
+
+## Data Validation
+
+{{VALIDATION_RULES}}
+
+<!-- Example:
+- **Email**: RFC 5322 compliant, verified via confirmation link
+- **Phone**: E.164 format, US numbers only (+1XXXXXXXXXX)
+- **Dates**: ISO 8601, no dates in the past for new applications
+- **File uploads**: PDF only, max 10MB, virus-scanned before storage
+
+TODO: List input validation rules for key data types in your domain.
+-->
+
+## Naming Conventions
+
+{{NAMING_CONVENTIONS}}
+
+<!-- Example:
+- **Domain entities in code**: PascalCase matching the domain term (Permit, Applicant, Inspection)
+- **Database tables**: snake_case plural (permits, applicants, inspections)
+- **API endpoints**: kebab-case plural (/api/v1/permits, /api/v1/inspection-reports)
+- **Events**: past tense with domain prefix (permit.submitted, inspection.completed, violation.issued)
+
+TODO: Define how domain terms map to code, database, and API naming.
+-->
