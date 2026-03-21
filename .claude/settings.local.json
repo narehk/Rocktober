@@ -28,7 +28,11 @@
       "WebFetch(domain:wisprflow.ai)",
       "mcp__mcp-registry__search_mcp_registry",
       "Bash(\"/c/Program Files/nodejs/node\" -e \":*)",
-      "Bash('/c/Program Files/nodejs/node' -e \":*)"
+      "Bash('/c/Program Files/nodejs/node' -e \":*)",
+      "Bash(\"/c/Program Files/nodejs/node\" tests/validate-schemas.js)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(where node:*)",
+      "Bash(\"/c/Program Files/nodejs/node\" -e \"console.log\\(''ok''\\)\")"
     ]
   },
   "statusLine": {
