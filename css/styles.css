@@ -134,6 +134,38 @@ body {
   text-shadow: 0 0 10px var(--neon-blue);
 }
 
+/* --- User Select --- */
+.user-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.user-select-label {
+  font-size: 0.4rem;
+  color: var(--neon-blue);
+  text-shadow: 0 0 8px var(--neon-blue);
+}
+
+.user-dropdown {
+  font-family: var(--font-pixel);
+  font-size: 0.45rem;
+  background: var(--bg-dark);
+  color: var(--neon-blue);
+  border: 1px solid var(--neon-blue);
+  border-radius: 2px;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+  outline: none;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.user-dropdown:focus {
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.4);
+}
+
 /* --- App Layout --- */
 .app-layout {
   display: grid;
@@ -351,6 +383,25 @@ body {
 .vote-btn:disabled {
   opacity: 0.3;
   cursor: not-allowed;
+}
+
+.vote-btn.voted {
+  background: var(--neon-pink);
+  color: var(--bg-dark);
+  border-color: var(--neon-pink);
+  opacity: 1;
+  box-shadow: 0 0 15px rgba(255, 45, 149, 0.5);
+}
+
+.vote-btn.own-song {
+  border-color: var(--neon-purple);
+  color: var(--neon-purple);
+  opacity: 0.5;
+}
+
+.song-card.winner-highlight {
+  border-color: var(--gold);
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
 }
 
 /* --- Winner Display --- */
