@@ -23,6 +23,16 @@
     ".claude/providers/local.md",
     ".claude/providers/ado.md",
     ".claude/providers/github.md",
-    ".claude/scripts/statusline.js"
+    ".claude/scripts/statusline.js",
+    ".claude/scripts/lib/common.sh",
+    ".claude/scripts/ado/ado-get-item.sh",
+    ".claude/scripts/ado/ado-update-state.sh",
+    ".claude/scripts/ado/ado-post-comment.sh",
+    ".claude/scripts/ado/ado-create-item.sh",
+    ".claude/scripts/ado/ado-add-relation.sh",
+    ".claude/scripts/ado/ado-update-fields.sh",
+    ".claude/scripts/ado/ado-query.sh",
+    ".claude/commands/after-action.md",
+    ".claude/rules/after-action-trigger.md"
   ]
 }

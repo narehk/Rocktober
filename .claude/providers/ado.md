@@ -2,6 +2,22 @@
 
 Routes `/work` commands to Azure DevOps Boards via the `az boards` CLI. Every external write also creates or updates a local mirror (dual-write pattern per `provider.md`).
 
+## Script Reference
+
+Reusable scripts in `.claude/scripts/ado/` encapsulate all CLI operations. **Use these scripts instead of deriving `az boards` commands inline.** Each script sources `lib/common.sh`, handles auth checks, and outputs JSON to stdout with human messages to stderr.
+
+| Operation | Script | Usage |
+|-----------|--------|-------|
+| Get work item | `ado/ado-get-item.sh` | `bash .claude/scripts/ado/ado-get-item.sh <id> [--expand relations]` |
+| Update state | `ado/ado-update-state.sh` | `bash .claude/scripts/ado/ado-update-state.sh <id> <state>` |
+| Post comment | `ado/ado-post-comment.sh` | `bash .claude/scripts/ado/ado-post-comment.sh <id> "<html>"` |
+| Create item | `ado/ado-create-item.sh` | `bash .claude/scripts/ado/ado-create-item.sh <type> <title> [--parent <id>] [--field k=v ...]` |
+| Add relation | `ado/ado-add-relation.sh` | `bash .claude/scripts/ado/ado-add-relation.sh <src_id> <relation_type> <target>` |
+| Update fields | `ado/ado-update-fields.sh` | `bash .claude/scripts/ado/ado-update-fields.sh <id> <field=val ...>` |
+| WIQL query | `ado/ado-query.sh` | `bash .claude/scripts/ado/ado-query.sh "<where_clause>"` |
+
+**Conventions**: Exit 0=success, 1=blocking error, 2=transient. `ado-post-comment.sh` exits 0 even on failure (non-blocking per Comment Protocol). All scripts read org/project from CONTEXT.md automatically.
+
 ## Prerequisites
 
 Required tools and authentication:
@@ -71,12 +87,10 @@ Post a structured comment to an ADO work item's discussion thread on every state
 ### Command Pattern
 
 ```bash
-az boards work-item update --id {ado_id} \
-  --discussion "{comment_html}" \
-  --org https://dev.azure.com/southbendin -o json
+bash .claude/scripts/ado/ado-post-comment.sh {ado_id} "{comment_html}"
 ```
 
-**Note**: The `--discussion` flag accepts HTML. ADO renders it in the Discussion tab.
+**Note**: The `--discussion` flag accepts HTML. ADO renders it in the Discussion tab. The script exits 0 even on failure (non-blocking).
 
 ### Standard Comment Format
 
@@ -115,22 +129,16 @@ After any quiz (author or acceptance) completes or is declined, perform three ac
 Create/update a wiki page for the quiz artifact:
 
 ```bash
+# Wiki operations use az CLI directly (no dedicated script yet)
+# Read org from CONTEXT.md: source .claude/scripts/lib/common.sh; ORG=$(get_ado_org)
 az devops wiki page create --wiki "{product-wiki}" \
   --path "/{Project}/Reviews/W-NNN-{quiz-type}" \
   --content @{local_artifact_path} \
   --encoding utf-8 \
-  --org https://dev.azure.com/southbendin -o json
+  --org "{ORG}" -o json
 ```
 
-If the page already exists (retake), use `update` instead of `create`:
-
-```bash
-az devops wiki page update --wiki "{product-wiki}" \
-  --path "/{Project}/Reviews/W-NNN-{quiz-type}" \
-  --content @{local_artifact_path} \
-  --version {etag} \
-  --org https://dev.azure.com/southbendin -o json
-```
+If the page already exists (retake), use `update` instead of `create` with `--version {etag}`.
 
 The Product wiki name and Project name are read from CONTEXT.md Doc Provider section.
 
@@ -139,10 +147,7 @@ The Product wiki name and Project name are read from CONTEXT.md Doc Provider sec
 Link the wiki page URL to the work item so it's discoverable from the "Links" tab:
 
 ```bash
-az boards work-item relation add --id {ado_id} \
-  --relation-type "Hyperlink" \
-  --target-url "{wiki_page_url}" \
-  --org https://dev.azure.com/southbendin -o json
+bash .claude/scripts/ado/ado-add-relation.sh {ado_id} "Hyperlink" "{wiki_page_url}"
 ```
 
 **Note**: Check for existing hyperlinks to the same path before adding to avoid duplicates (relevant for retakes).
@@ -197,35 +202,13 @@ Batch creation of Detail and Task items under a Planned Work or Unplanned Work i
 
 1. **Create each Detail**:
    ```bash
-   az boards work-item create --type "Detail" \
-     --title "{scenario_name}" \
-     --description "{gherkin_given_when_then}" \
-     --project "Digital - Product Portfolio" \
-     --org https://dev.azure.com/southbendin -o json
+   bash .claude/scripts/ado/ado-create-item.sh "Detail" "{scenario_name}" --parent {pw_ado_id}
    ```
+   The script handles creation + parent linking in one call. Parse stdout JSON for the new ID.
 
-2. **Link Detail to parent PW/UW**:
+2. **Create Tasks under each Detail** (one per Then/And clause):
    ```bash
-   az boards work-item relation add --id {detail_id} \
-     --relation-type "Parent" \
-     --target-id {pw_ado_id} \
-     --org https://dev.azure.com/southbendin -o json
-   ```
-
-3. **Create Tasks under each Detail** (one per Then/And clause):
-   ```bash
-   az boards work-item create --type "Task" \
-     --title "{assertion_text}" \
-     --project "Digital - Product Portfolio" \
-     --org https://dev.azure.com/southbendin -o json
-   ```
-
-4. **Link Task to parent Detail**:
-   ```bash
-   az boards work-item relation add --id {task_id} \
-     --relation-type "Parent" \
-     --target-id {detail_id} \
-     --org https://dev.azure.com/southbendin -o json
+   bash .claude/scripts/ado/ado-create-item.sh "Task" "{assertion_text}" --parent {detail_id}
    ```
 
 5. **Post summary comment** on parent PW/UW item (per Comment Protocol)
@@ -298,27 +281,12 @@ Create a work item in ADO and a local mirror.
 6. **Create in ADO**:
 
    ```bash
-   PYTHONIOENCODING=utf-8 az boards work-item create \
-     --type "{type}" \
-     --title "{title}" \
-     --detect true \
-     --output json
+   bash .claude/scripts/ado/ado-create-item.sh "{type}" "{title}" --parent {parent_ado_id}
    ```
 
-   Parse the response JSON for `id` and `url`.
+   The script handles creation + parent linking in one call. Parse stdout JSON for `id` and `url`. Omit `--parent` if no parent ADO ID was provided in step 5.
 
-7. **Link to parent** (if parent ADO ID provided in step 5):
-
-   ```bash
-   PYTHONIOENCODING=utf-8 az boards work-item relation add \
-     --id {new_item_id} \
-     --relation-type "Parent" \
-     --target-id {parent_ado_id} \
-     --detect true \
-     --output json
-   ```
-
-   **Important**: Use relation type **display names** (`"Parent"`, `"Child"`, `"Related"`, `"Duplicate"`, `"Duplicate Of"`), NOT reference names (`System.LinkTypes.Hierarchy-Reverse`). The `az boards` CLI rejects reference names. Run `az boards work-item relation list-type` to see all valid display names.
+   **Important**: The relation script uses display names (`"Parent"`, `"Child"`, `"Related"`, `"Duplicate"`, `"Duplicate Of"`), NOT reference names. This is handled automatically by the scripts.
 
 8. **Create local mirror** — Standard item file in `.claude/work/items/W-NNN.md` with:
    - All standard fields (status: captured, category, project, etc.)
@@ -337,8 +305,10 @@ Query ADO and merge with the local board.
 1. **Build WIQL query**:
 
    ```bash
-   az boards query --wiql "SELECT [System.Id], [System.Title], [System.State], [System.WorkItemType] FROM workitems WHERE [System.TeamProject] = '{PROJECT}' AND [System.State] <> 'Archived' ORDER BY [System.ChangedDate] DESC" --org "{ORG}" --output json
+   bash .claude/scripts/ado/ado-query.sh "[System.State] <> 'Archived'"
    ```
+
+   The script auto-generates SELECT/FROM/ORDER BY clauses and reads project/org from CONTEXT.md.
 
 2. **Map ADO states to our stages** — For each result, look up `(type, ado_state) → our_stage` using the CONTEXT.md mappings. Items with unmapped states are shown with their raw ADO state.
 
@@ -357,7 +327,7 @@ Show merged local + ADO details for an item.
 3. **Fetch from ADO** (if Provider Integration section exists):
 
    ```bash
-   az boards work-item show --id {ado_id} --org "{ORG}" --output json
+   bash .claude/scripts/ado/ado-get-item.sh {ado_id}
    ```
 
 4. **Merge and display** — Show local content with ADO state, comments, and links overlaid
@@ -377,11 +347,7 @@ Transition state in ADO and locally.
 5. **Update in ADO**:
 
    ```bash
-   PYTHONIOENCODING=utf-8 az boards work-item update \
-     --id {ado_id} \
-     --state "{ado_state}" \
-     --detect true \
-     --output json
+   bash .claude/scripts/ado/ado-update-state.sh {ado_id} "{ado_state}"
    ```
 
 6. **Update locally** — Standard item file status update, then regenerate board
@@ -417,39 +383,18 @@ Triggered after a Requirement or Change Order reaches "Approved" state, or when 
 2. **If yes — Create in ADO**:
 
    ```bash
-   PYTHONIOENCODING=utf-8 az boards work-item create \
-     --type "{Planned Work | Unplanned Work}" \
-     --title "{original_title}" \
-     --assigned-to "{assignee}" \
-     --project "{PROJECT}" \
-     --org "{ORG}" \
-     --output json
+   bash .claude/scripts/ado/ado-create-item.sh "{Planned Work | Unplanned Work}" "{original_title}" \
+     --parent {project_ado_id} --assigned-to "{assignee}"
    ```
 
-   Note: `--project` is required — `--detect true` does not always resolve the project.
-
-3. **Link to parent Project** (NOT the Requirement/Change Order — the execution copy is a sibling under the same Project):
-
-   ```bash
-   PYTHONIOENCODING=utf-8 az boards work-item relation add \
-     --id {new_item_id} \
-     --relation-type "Parent" \
-     --target-id {project_ado_id} \
-     --org "{ORG}" \
-     --output json
-   ```
+   The script handles creation + parent linking. `--parent` links to the Project (NOT the Requirement/Change Order — the execution copy is a sibling under the same Project).
 
    The `{project_ado_id}` is the ADO ID of the Project that parents the frozen Requirement/Change Order (read from `**ADO Parent ID**` on the frozen item).
 
 4. **Link back to frozen source** — Use `Duplicate Of` to trace the execution copy back to its origin:
 
    ```bash
-   PYTHONIOENCODING=utf-8 az boards work-item relation add \
-     --id {new_item_id} \
-     --relation-type "Duplicate Of" \
-     --target-id {frozen_item_ado_id} \
-     --org "{ORG}" \
-     --output json
+   bash .claude/scripts/ado/ado-add-relation.sh {new_item_id} "Duplicate Of" {frozen_item_ado_id}
    ```
 
    This creates a bidirectional link: the execution copy shows "Duplicate Of → Requirement #{id}", and the frozen Requirement shows "Duplicate → Planned Work #{new_id}".
@@ -460,16 +405,12 @@ Triggered after a Requirement or Change Order reaches "Approved" state, or when 
    - **Tags**: Copy `System.Tags` from the frozen item
 
    ```bash
-   MSYS_NO_PATHCONV=1 az boards work-item update \
-     --id {new_item_id} \
-     --org "{ORG}" \
-     --description "{description}" \
-     -f "Custom.Scenario={scenario}" \
-        "Custom.Given={given}" \
-        "Custom.When={when}" \
-        "Custom.Then={then}" \
-     -o json
+   bash .claude/scripts/ado/ado-update-fields.sh {new_item_id} \
+     "Custom.Scenario={scenario}" "Custom.Given={given}" \
+     "Custom.When={when}" "Custom.Then={then}"
    ```
+
+   The script handles `MSYS_NO_PATHCONV=1` automatically for Windows/Git Bash path safety.
 
 6. **Create local mirror** in `.claude/work/items/W-{new_id}.md` with:
    - Status: `ready`
@@ -511,7 +452,7 @@ Delegate to **move** with target stage `done`. Additionally:
 2. **Resolve predecessor links** — Query ADO for items linked to this one:
 
    ```bash
-   az boards work-item show --id {ado_id} --org "{ORG}" --expand relations --output json
+   bash .claude/scripts/ado/ado-get-item.sh {ado_id} --expand relations
    ```
 
    Parse the `relations` array for Predecessor links (`System.LinkTypes.Dependency-Reverse` in the JSON response). For each linked item, check if the completion of this item unblocks it.
