@@ -32,6 +32,8 @@ const Rocktober = (() => {
     winnerCard:     $('#winner-card'),
     leaderboard:    $('#leaderboard'),
     compInfo:       $('#comp-info'),
+    userSelect:     $('#user-select'),
+    currentUser:    $('#current-user'),
   };
 
   // ---------------------
@@ -41,6 +43,7 @@ const Rocktober = (() => {
   let currentRound = null;
   let leaderboard = null;
   let pollTimer = null;
+  let currentUser = null;
 
   // ---------------------
   // Data Loading
@@ -114,12 +117,151 @@ const Rocktober = (() => {
   }
 
   /**
-   * Determine current phase from round data and config schedule
+   * Build a Date object for a specific time in the competition timezone.
+   * Uses Intl.DateTimeFormat to resolve the UTC offset for that date/timezone,
+   * which handles DST correctly.
    */
-  function getCurrentPhase(round) {
+  function toCompetitionDate(dateStr, timeStr, timezone) {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    // Create a date at noon UTC to safely resolve timezone offset
+    const probe = new Date(`${dateStr}T12:00:00Z`);
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      timeZoneName: 'shortOffset',
+    }).formatToParts(probe);
+    const tzPart = parts.find(p => p.type === 'timeZoneName');
+    // Parse offset like "GMT-5" or "GMT+5:30"
+    const offsetStr = (tzPart?.value || 'GMT').replace('GMT', '') || '+0';
+    const match = offsetStr.match(/^([+-]?)(\d{1,2})(?::(\d{2}))?$/);
+    const sign = match[1] === '-' ? -1 : 1;
+    const offH = parseInt(match[2], 10);
+    const offM = parseInt(match[3] || '0', 10);
+    const totalOffsetMs = sign * (offH * 60 + offM) * 60_000;
+    // Build UTC time = local time - offset
+    const localMs = new Date(`${dateStr}T${timeStr}:00`).getTime();
+    return new Date(localMs - totalOffsetMs);
+  }
+
+  /**
+   * Compute phase from schedule times + timezone for a given round date.
+   * Returns 'pre', 'submission', 'voting', or 'results'.
+   */
+  function computePhaseFromSchedule(roundDate, schedule) {
+    const tz = schedule.timezone;
+    const now = new Date();
+    const subOpen = toCompetitionDate(roundDate, schedule.submissionOpen, tz);
+    const votingOpen = toCompetitionDate(roundDate, schedule.votingOpen, tz);
+    const resultsReveal = toCompetitionDate(roundDate, schedule.resultsReveal, tz);
+
+    if (now < subOpen) return 'pre';
+    if (now < votingOpen) return 'submission';
+    if (now < resultsReveal) return 'voting';
+    return 'results';
+  }
+
+  /**
+   * Determine current phase from round data and config schedule.
+   * Uses schedule-based computation for today's round, falls back to
+   * stored phase for historical rounds.
+   */
+  function getCurrentPhase(round, cfg) {
     if (!round) return 'submission';
     if (round.winner) return 'results';
+
+    // For today's round, compute from schedule
+    if (cfg?.schedule && round.date) {
+      const today = new Date().toISOString().slice(0, 10);
+      if (round.date === today) {
+        return computePhaseFromSchedule(round.date, cfg.schedule);
+      }
+    }
+
+    // Historical or missing schedule — use stored phase
     return round.phase || 'submission';
+  }
+
+  // ---------------------
+  // User Identity
+  // ---------------------
+
+  /**
+   * Initialize user identity from localStorage or member selection.
+   */
+  function initUser(members) {
+    if (!members || members.length === 0) return;
+
+    const stored = localStorage.getItem('rocktober-user');
+    const validNames = members.map(m => m.name);
+
+    // Populate dropdown
+    dom.currentUser.innerHTML = validNames
+      .map(name => `<option value="${escapeHTML(name)}">${escapeHTML(name)}</option>`)
+      .join('');
+
+    if (stored && validNames.includes(stored)) {
+      currentUser = stored;
+      dom.currentUser.value = stored;
+    } else {
+      currentUser = validNames[0];
+      localStorage.setItem('rocktober-user', currentUser);
+    }
+
+    dom.userSelect.classList.remove('hidden');
+
+    dom.currentUser.addEventListener('change', () => {
+      currentUser = dom.currentUser.value;
+      localStorage.setItem('rocktober-user', currentUser);
+      // Re-render submissions to update vote button states
+      if (currentRound) {
+        const phase = getCurrentPhase(currentRound, config);
+        renderSubmissions(currentRound.submissions, phase, currentRound.day);
+      }
+    });
+  }
+
+  // ---------------------
+  // Voting
+  // ---------------------
+
+  /**
+   * Get the localStorage key for a vote on a specific round.
+   */
+  function voteKey(roundDay) {
+    const slug = config?.slug || DEFAULT_COMPETITION;
+    return `rocktober-vote-${slug}-day-${String(roundDay).padStart(2, '0')}`;
+  }
+
+  /**
+   * Get the stored vote for a round (returns trackId or null).
+   */
+  function getStoredVote(roundDay) {
+    return localStorage.getItem(voteKey(roundDay));
+  }
+
+  /**
+   * Handle a vote action. Stores in localStorage for now;
+   * W-11970 will add Cloudflare Worker POST.
+   */
+  function handleVote(trackId, submitter, roundDay) {
+    if (submitter === currentUser) return;
+    if (getStoredVote(roundDay)) return;
+
+    localStorage.setItem(voteKey(roundDay), trackId);
+
+    // Re-render to show voted state
+    const phase = getCurrentPhase(currentRound, config);
+    renderSubmissions(currentRound.submissions, phase, roundDay);
+  }
+
+  /**
+   * Attach vote click handler via event delegation (call once).
+   */
+  function initVoteHandler() {
+    dom.submissionsGrid.addEventListener('click', (e) => {
+      const btn = e.target.closest('.vote-btn');
+      if (!btn || btn.disabled) return;
+      handleVote(btn.dataset.track, btn.dataset.submitter, currentRound?.day);
+    });
   }
 
   // ---------------------
@@ -150,33 +292,57 @@ const Rocktober = (() => {
       ? `Picked by <strong>${round.themePicker}</strong>`
       : '';
 
-    const phase = getCurrentPhase(round);
+    const phase = getCurrentPhase(round, config);
     dom.phaseBadge.textContent = phase;
     dom.phaseBadge.className = `phase-badge ${phase}`;
   }
 
-  function renderSubmissions(submissions, phase) {
+  function renderSubmissions(submissions, phase, roundDay) {
     if (!submissions || submissions.length === 0) {
       dom.submissionsGrid.classList.add('hidden');
       return;
     }
 
+    const existingVote = roundDay ? getStoredVote(roundDay) : null;
+
     dom.submissionsGrid.classList.remove('hidden');
-    dom.submissionsGrid.innerHTML = submissions.map(sub => `
-      <div class="song-card">
-        <img class="album-art"
-             src="${sub.albumArt || ''}"
-             alt="${sub.title || 'Album art'}"
-             onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 80 80%22><rect fill=%22%23111%22 width=%2280%22 height=%2280%22/><text x=%2240%22 y=%2244%22 text-anchor=%22middle%22 fill=%22%23333%22 font-size=%2212%22>?</text></svg>'">
-        <div class="song-info">
-          <div class="song-title">${escapeHTML(sub.title || 'Unknown')}</div>
-          <div class="song-artist">${escapeHTML(sub.artist || 'Unknown Artist')}</div>
-          <div class="song-submitter">${escapeHTML(sub.submitter || 'Anonymous')}</div>
-          ${phase === 'voting' ? `<button class="vote-btn" data-track="${escapeHTML(sub.trackId || '')}">VOTE</button>` : ''}
-          ${phase === 'results' && sub.votes !== undefined ? `<span class="neon-blue-text pixel-text" style="font-size:0.5rem;margin-top:0.5rem;display:inline-block">${sub.votes} VOTES</span>` : ''}
-        </div>
-      </div>
-    `).join('');
+    dom.submissionsGrid.innerHTML = submissions.map(sub => {
+      let voteButton = '';
+      if (phase === 'voting') {
+        const isOwnSong = currentUser && sub.submitter === currentUser;
+        const isVoted = existingVote === sub.trackId;
+        const hasVoted = !!existingVote;
+
+        if (isOwnSong) {
+          voteButton = `<button class="vote-btn own-song" disabled>YOUR SONG</button>`;
+        } else if (isVoted) {
+          voteButton = `<button class="vote-btn voted" disabled>VOTED</button>`;
+        } else if (hasVoted) {
+          voteButton = `<button class="vote-btn" disabled data-track="${escapeHTML(sub.trackId || '')}" data-submitter="${escapeHTML(sub.submitter || '')}">VOTE</button>`;
+        } else {
+          voteButton = `<button class="vote-btn" data-track="${escapeHTML(sub.trackId || '')}" data-submitter="${escapeHTML(sub.submitter || '')}">VOTE</button>`;
+        }
+      }
+
+      const voteCount = phase === 'results' && sub.votes !== undefined
+        ? `<span class="neon-blue-text pixel-text" style="font-size:0.5rem;margin-top:0.5rem;display:inline-block">${sub.votes} VOTES</span>`
+        : '';
+
+      return `
+        <div class="song-card${phase === 'results' && sub.submitter === currentRound?.winner ? ' winner-highlight' : ''}">
+          <img class="album-art"
+               src="${sub.albumArt || ''}"
+               alt="${sub.title || 'Album art'}"
+               onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 80 80%22><rect fill=%22%23111%22 width=%2280%22 height=%2280%22/><text x=%2240%22 y=%2244%22 text-anchor=%22middle%22 fill=%22%23333%22 font-size=%2212%22>?</text></svg>'">
+          <div class="song-info">
+            <div class="song-title">${escapeHTML(sub.title || 'Unknown')}</div>
+            <div class="song-artist">${escapeHTML(sub.artist || 'Unknown Artist')}</div>
+            <div class="song-submitter">${escapeHTML(sub.submitter || 'Anonymous')}</div>
+            ${voteButton}
+            ${voteCount}
+          </div>
+        </div>`;
+    }).join('');
   }
 
   function renderWinner(round) {
@@ -246,6 +412,8 @@ const Rocktober = (() => {
       // Load config
       config = await loadConfig();
       renderCompInfo(config);
+      initUser(config.members);
+      initVoteHandler();
 
       // Determine current round
       const roundNum = getCurrentRoundNumber(config);
@@ -274,11 +442,11 @@ const Rocktober = (() => {
           throw new Error('No round data available.');
         }
       }
-      const phase = getCurrentPhase(currentRound);
+      const phase = getCurrentPhase(currentRound, config);
 
       // Render
       renderTheme(currentRound, actualRoundNum);
-      renderSubmissions(currentRound.submissions, phase);
+      renderSubmissions(currentRound.submissions, phase, currentRound.day);
       if (phase === 'results') renderWinner(currentRound);
 
       // Load leaderboard
@@ -302,13 +470,13 @@ const Rocktober = (() => {
     try {
       const slug = config?.slug || DEFAULT_COMPETITION;
       const round = await loadRound(slug, roundNum);
-      const oldPhase = getCurrentPhase(currentRound);
-      const newPhase = getCurrentPhase(round);
+      const oldPhase = getCurrentPhase(currentRound, config);
+      const newPhase = getCurrentPhase(round, config);
 
       if (oldPhase !== newPhase || JSON.stringify(round) !== JSON.stringify(currentRound)) {
         currentRound = round;
         renderTheme(round, roundNum);
-        renderSubmissions(round.submissions, newPhase);
+        renderSubmissions(round.submissions, newPhase, round.day);
         if (newPhase === 'results') renderWinner(round);
 
         // Refresh leaderboard on phase change
@@ -333,5 +501,6 @@ const Rocktober = (() => {
     getConfig: () => config,
     getCurrentRound: () => currentRound,
     getLeaderboard: () => leaderboard,
+    getCurrentUser: () => currentUser,
   };
 })();
