@@ -530,4 +530,179 @@ body {
   .chrome-text {
     font-size: 2rem;
   }
+
+  .search-result-card {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.5rem;
+  }
+
+  .search-album-art {
+    width: 60px;
+    height: 60px;
+  }
+}
+
+/* =============================================================
+   Song Search & Submission
+   ============================================================= */
+
+.song-search {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border: 1px solid var(--neon-pink);
+  border-radius: 4px;
+  background: rgba(255, 45, 149, 0.03);
+  box-shadow: 0 0 10px rgba(255, 45, 149, 0.1);
+}
+
+.search-heading {
+  font-size: 0.6rem;
+  color: var(--neon-pink);
+  margin-bottom: 0.75rem;
+  text-shadow: 0 0 8px rgba(255, 45, 149, 0.5);
+}
+
+.search-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  padding-right: 2rem;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  background: var(--bg-card);
+  border: 1px solid var(--chrome-dark);
+  border-radius: 3px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-input::placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.search-input:focus {
+  border-color: var(--neon-blue);
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.3);
+}
+
+.search-icon {
+  position: absolute;
+  right: 0.6rem;
+  color: var(--text-muted);
+  font-size: 1rem;
+  pointer-events: none;
+}
+
+.search-status {
+  font-family: var(--font-pixel);
+  font-size: 0.5rem;
+  color: var(--neon-blue);
+  padding: 0.4rem 0;
+  text-shadow: 0 0 6px rgba(0, 229, 255, 0.4);
+}
+
+/* Search Results */
+.search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 400px;
+  overflow-y: auto;
+  margin-top: 0.5rem;
+}
+
+.search-result-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  background: var(--bg-card);
+  border: 1px solid transparent;
+  border-radius: 3px;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.search-result-card:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--chrome-dark);
+}
+
+.search-album-art {
+  width: 48px;
+  height: 48px;
+  border-radius: 2px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.search-track-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.search-track-title {
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-track-artist {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.submit-btn {
+  flex-shrink: 0;
+  padding: 0.35rem 0.8rem;
+  font-family: var(--font-pixel);
+  font-size: 0.45rem;
+  color: var(--bg-dark);
+  background: var(--neon-pink);
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+}
+
+.submit-btn:hover {
+  background: var(--hot-magenta);
+  box-shadow: 0 0 12px rgba(255, 0, 255, 0.5);
+  transform: scale(1.05);
+}
+
+.submit-btn:active {
+  transform: scale(0.97);
+}
+
+/* Scrollbar for search results */
+.search-results::-webkit-scrollbar {
+  width: 4px;
+}
+
+.search-results::-webkit-scrollbar-track {
+  background: var(--bg-dark);
+}
+
+.search-results::-webkit-scrollbar-thumb {
+  background: var(--chrome-dark);
+  border-radius: 2px;
+}
+
+.search-results::-webkit-scrollbar-thumb:hover {
+  background: var(--neon-pink);
 }
