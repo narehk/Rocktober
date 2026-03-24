@@ -1,0 +1,37 @@
+name: Theme Reveal
+
+on:
+  schedule:
+    # Default: 8:00 AM ET (12:00 UTC during EDT, 13:00 UTC during EST)
+    - cron: '0 12 * * 1-5'
+  workflow_dispatch: # Allow manual trigger
+
+permissions:
+  contents: write
+
+jobs:
+  reveal-theme:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run theme reveal script
+        run: node .github/scripts/theme-reveal.js
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add competitions/
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "chore(round): reveal today's theme [automated]"
+            git push
+          fi
