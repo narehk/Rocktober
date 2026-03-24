@@ -129,16 +129,14 @@ After any quiz (author or acceptance) completes or is declined, perform three ac
 Create/update a wiki page for the quiz artifact:
 
 ```bash
-# Wiki operations use az CLI directly (no dedicated script yet)
-# Read org from CONTEXT.md: source .claude/scripts/lib/common.sh; ORG=$(get_ado_org)
-az devops wiki page create --wiki "{product-wiki}" \
-  --path "/{Project}/Reviews/W-NNN-{quiz-type}" \
-  --content @{local_artifact_path} \
-  --encoding utf-8 \
-  --org "{ORG}" -o json
+bash .claude/scripts/ado/ado-wiki-publish.sh "{product-wiki}" \
+  "/{Project}/Reviews/W-NNN-{quiz-type}" \
+  "{local_artifact_path}"
 ```
 
-If the page already exists (retake), use `update` instead of `create` with `--version {etag}`.
+The script handles create-or-update automatically (checks if page exists, extracts eTag from response headers, uses REST API). It works for both code wikis and project wikis.
+
+> **Note**: The `az devops wiki page update` CLI has a bug on code wikis — it fails with "versionType should be 'branch'" regardless of the `--version` value. The `ado-wiki-publish.sh` script works around this by using the ADO REST API directly. See [AAR #13](https://github.com/southbendin/WorkSpaceFramework/issues/13).
 
 The Product wiki name and Project name are read from CONTEXT.md Doc Provider section.
 
@@ -711,28 +709,13 @@ Push a local document to ADO Wiki.
      --output json 2>/dev/null
    ```
 
-4. **Create or update**:
+4. **Create or update** — Use the wiki publish script (handles code wiki REST API workaround):
 
    ```bash
-   # Create new page
-   az devops wiki page create \
-     --wiki "{WIKI}" \
-     --path "{wiki_path}" \
-     --file-path "{local_path}" \
-     --org "{ORG}" \
-     --project "{PROJECT}" \
-     --output json
-
-   # Update existing page (include eTag from show)
-   az devops wiki page update \
-     --wiki "{WIKI}" \
-     --path "{wiki_path}" \
-     --file-path "{local_path}" \
-     --version "{etag}" \
-     --org "{ORG}" \
-     --project "{PROJECT}" \
-     --output json
+   bash .claude/scripts/ado/ado-wiki-publish.sh "{WIKI}" "{wiki_path}" "{local_path}"
    ```
+
+   > The `az devops wiki page create/update` CLI commands have bugs with code wikis. The publish script uses the REST API directly. See [AAR #13](https://github.com/southbendin/WorkSpaceFramework/issues/13).
 
 5. **Report**: "Published `<path>` to ADO Wiki at `{wiki_path}`"
 
