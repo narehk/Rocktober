@@ -126,9 +126,8 @@ function main() {
     log('info', 'No changes made. Nothing to commit.');
   }
 
-  // Signal to the workflow whether a commit is needed
-  // The workflow reads this via process exit code or output
-  process.exit(changed ? 0 : 0); // Always exit 0; workflow checks git status
+  // Always exit 0 — workflow checks git status for changes
+  process.exit(0);
 }
 
 main();

@@ -93,7 +93,7 @@ function recomputeLeaderboard(slug, config) {
   // Compute win rates and sort by wins descending, then by name
   const standingsArray = Object.values(standings).map((s) => ({
     ...s,
-    winRate: s.submissions > 0 ? Math.round((s.wins / roundsCompleted) * 100) / 100 : 0,
+    winRate: roundsCompleted > 0 ? Math.round((s.wins / roundsCompleted) * 100) / 100 : 0,
   }));
 
   standingsArray.sort((a, b) => {
@@ -103,7 +103,7 @@ function recomputeLeaderboard(slug, config) {
 
   return {
     competition: slug,
-    lastUpdated: latestDate ? `${latestDate}T16:30:00-04:00` : new Date().toISOString(),
+    lastUpdated: latestDate ? `${latestDate}T20:30:00Z` : new Date().toISOString(),
     roundsCompleted,
     standings: standingsArray,
   };

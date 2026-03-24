@@ -12,7 +12,7 @@ const COMPETITIONS_DIR = path.join(__dirname, '..', '..', 'competitions');
  */
 function getDayOfWeek(date) {
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  return days[date.getDay()];
+  return days[date.getUTCDay()];
 }
 
 /**
@@ -27,9 +27,9 @@ function parseDate(dateStr) {
  * Format a Date as YYYY-MM-DD.
  */
 function formatDate(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(date.getUTCDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
 }
 
@@ -135,6 +135,7 @@ function isWithinCompetition(config, date) {
  * Determine the theme picker for a round based on round-robin order.
  */
 function getThemePicker(config, roundNumber) {
+  if (roundNumber === null || roundNumber === undefined) return null;
   if (!config.members || config.members.length === 0) return null;
   const sorted = [...config.members].sort((a, b) => a.order - b.order);
   const index = (roundNumber - 1) % sorted.length;
