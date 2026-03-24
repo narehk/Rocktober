@@ -268,6 +268,12 @@ Requirements and Change Orders are **frozen on approval** (ADO state: Approved).
 | In Review | Testing |
 | Done | Done |
 
+**Required fields for Task state transitions:**
+- `Microsoft.VSTS.Scheduling.RemainingWork` → must be set (use `0` when completing). Required to enter Doing state.
+- `Microsoft.VSTS.Scheduling.DueDate` → must be set (use today's date when completing retroactively). Required to enter Doing and Done states.
+
+> Discovered via [AAR #14](https://github.com/southbendin/WorkSpaceFramework/issues/14). These fields are enforced by ADO process template rules and cause `TF401320: Rule Error` if missing.
+
 ##### Bug
 
 | Our Stage | ADO State |

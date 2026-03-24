@@ -543,7 +543,24 @@ Generate and present the author quiz as a standalone subcommand. Useful if the u
 3. **Update item file** with completion notes
    b. **Set `**Completed**: YYYY-MM-DD`** in item file metadata (today's date)
 4. **Move item file** to `.claude/work/archive/`
-4. **Acceptance quiz** — After completing the status transition, present the acceptance verification quiz:
+5. **Child Cascade** — If the item has a `## Decomposition` section (i.e., it was decomposed via `/work decompose`):
+   a. **Read decomposition table** — Extract Detail ADO IDs from the table
+   b. **For each Detail** — Query ADO for its child Tasks (Hierarchy-Forward relations)
+   c. **Transition Tasks to Done** — For each Task not already in a terminal state:
+      - Use the REST API (not `az boards` CLI) to batch-set fields:
+        - `System.State` → intermediate state(s) → final Done state (per Type → State Mappings)
+        - `Microsoft.VSTS.Scheduling.RemainingWork` → `0` (required by Task type for state transitions)
+        - `Microsoft.VSTS.Scheduling.DueDate` → today's date (required by Task type for Doing/Done states)
+      - Tasks follow: To Do → Doing → Done (two transitions)
+   d. **Transition Details to Completed** — For each Detail not already in a terminal state:
+      - Details follow: To do → Developing → Completed (two transitions)
+   e. **Report**: "Cascaded completion to N Details and M Tasks"
+   f. **On individual failure**: Report which items failed with the error, continue with remaining items. Do not block parent completion for child cascade failures.
+   g. **Post ADO comment** on the parent item: "Cascaded completion: N Details → Completed, M Tasks → Done"
+
+   > **See AAR #14**: This step was added after discovering that `/work done` left child items open when completing a decomposed parent. [GitHub #14](https://github.com/southbendin/WorkSpaceFramework/issues/14)
+
+6. **Acceptance quiz** — After completing the status transition, present the acceptance verification quiz:
 
    a. **Offer opt-out** via AskUserQuestion:
       ```javascript
@@ -672,11 +689,11 @@ Generate and present the author quiz as a standalone subcommand. Useful if the u
          ```
       3. **Report**: "Acceptance quiz skipped — declination recorded."
 
-5. **Check for unblocked items**: Scan all active item files for `**Blocked By**:` fields that reference the completed item's ID. If found:
+7. **Check for unblocked items**: Scan all active item files for `**Blocked By**:` fields that reference the completed item's ID. If found:
    a. Remove the completed item from their `**Blocked By**:` lists
    b. If provider is not local, also remove external dependency links (see provider file)
    c. Report: "Completing W-{id} unblocks: W-003, W-010"
-6. **Emit telemetry event** (fire-and-forget) — Append one JSON line to the current session file in `.claude/patterns/sessions/`:
+8. **Emit telemetry event** (fire-and-forget) — Append one JSON line to the current session file in `.claude/patterns/sessions/`:
    ```json
    { "ts": "<ISO 8601>", "type": "command", "command": "/work done", "item": "<id>", "project": "<project>", "outcome": "completed", "context": { "itemsUnblocked": <count>, "lifecycleDays": <days> } }
    ```
