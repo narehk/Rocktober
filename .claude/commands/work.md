@@ -270,12 +270,19 @@ Then continue execution.
    - If current state is **Approved** (already frozen) → Same redirect-with-confirmation flow as Requirements step 4 (Approved), but creates Unplanned Work instead of Planned Work.
 6. **For all other types** — Update item file status to `ready` (existing behavior). If provider is ADO, execute the state transition per type→state mappings.
 
-### `/work decompose <id>`
+### `/work decompose <id> [--file]`
 
 Break a Planned Work or Unplanned Work item into Detail and Task sub-items in ADO.
 
+**Modes**: Interactive (default) or Template-based (`--file`). Template mode enables bulk authoring — generate a markdown file, edit it, then ingest all items in batch.
+
+#### Common Steps (both modes)
+
 1. **Read item file** — Verify ADO type is `Planned Work` or `Unplanned Work`. If not, error: "Decomposition applies to Planned Work and Unplanned Work items only."
 2. **Check for existing children** — Query ADO: `az boards work-item show --id {ado_id} --expand relations --org https://dev.azure.com/southbendin -o json`. Check for `System.LinkTypes.Hierarchy-Forward` (Child) relations. If children exist, show them and ask: "Details already exist. Add more, replace, or done?"
+
+#### Interactive Mode (no `--file`)
+
 3. **Read frozen source acceptance criteria** — Read the item referenced by `**Execution Copy Of**:` to get the full Gherkin scenarios. If no Execution Copy Of, read the item's own acceptance criteria.
 4. **Parse Gherkin into Details** — Each `**Scenario**:` block becomes a Detail:
    - Detail title: Scenario name (e.g., "Repository structure is established")
@@ -296,11 +303,77 @@ Break a Planned Work or Unplanned Work item into Detail and Task sub-items in AD
    | ... |
    ```
    Present AskUserQuestion: Approve / Edit / Cancel
-7. **If Approve — Batch create in ADO** via the decompose operation in `ado.md`:
+7. **If Approve — Create in ADO** via the decompose operation in `ado.md` (serial mode):
    a. Create each Detail, link to parent PW/UW
    b. Create each Task, link to parent Detail. **Important**: Tasks require a `--description` (non-empty) to support future state transitions. Use the assertion text as the description.
    c. When transitioning Tasks to Done retroactively, also set `--fields "Microsoft.VSTS.Scheduling.DueDate=YYYY-MM-DD"` (required by ADO Task type for Done state)
    d. Create local mirror files for Details (W-NNN.md with ADO parent link). Tasks are NOT mirrored locally — they are leaf-level ADO items tracked via the Detail.
+8. Continue to **Finalize** steps below.
+
+#### Template Mode (`--file`)
+
+Template mode has two phases: **Generate** (create the template) and **Ingest** (parse and batch-create).
+
+##### Generate Phase
+
+If no template file exists at `.claude/temp/decompose-W-{id}.md`:
+
+3. **Read frozen source acceptance criteria** — Same as interactive step 3.
+4. **Parse Gherkin into proposed decomposition** — Same as interactive steps 4-5.
+5. **Write template file** to `.claude/temp/decompose-W-{id}.md`:
+   ```markdown
+   # Decomposition: W-{id}
+
+   Parent: #{ado_id} ({title})
+   Type: {Planned Work|Unplanned Work}
+
+   ## Items
+
+   | Type | Title | Parent | Description |
+   |------|-------|--------|-------------|
+   | Detail | {scenario_1_name} | - | {scenario_1_description} |
+   | Task | {then_clause_1} | Detail 1 | {then_clause_1_text} |
+   | Task | {then_clause_2} | Detail 1 | {then_clause_2_text} |
+   | Detail | {scenario_2_name} | - | {scenario_2_description} |
+   | Task | {then_clause_3} | Detail 2 | {then_clause_3_text} |
+   ```
+
+   **Template column semantics:**
+   | Column | Required | Rules |
+   |--------|----------|-------|
+   | Type | Yes | `Detail` or `Task` |
+   | Title | Yes | Non-empty, max 255 chars, no duplicates |
+   | Parent | Yes | `-` for Details (parented to PW/UW), `Detail N` for Tasks (N = 1-indexed position among Detail rows) |
+   | Description | Yes | Non-empty (required by ADO Task type for state transitions) |
+
+6. **Report**: "Template written to `.claude/temp/decompose-W-{id}.md`. Edit it to add, remove, or modify items, then run `/work decompose {id} --file` again to ingest."
+7. **Stop** — Do not proceed to creation. The user (or Claude) edits the template first.
+
+##### Ingest Phase
+
+If the template file already exists at `.claude/temp/decompose-W-{id}.md`:
+
+3. **Parse and validate** the template:
+   ```bash
+   bash .claude/scripts/ado/ado-parse-decompose-template.sh .claude/temp/decompose-W-{id}.md
+   ```
+   If validation fails, report errors and stop. User fixes the template and re-runs.
+
+4. **Present decomposition plan** for approval — Display the parsed items in a summary table. Present AskUserQuestion: Approve / Edit / Cancel.
+   - **Approve**: Continue to batch creation.
+   - **Edit**: Stop — user edits template and re-runs.
+   - **Cancel**: Delete the template file and stop.
+
+5. **If Approve — Batch create in ADO** via the batch decompose operation in `ado.md`:
+   a. Use `wit_add_child_work_items` MCP tool to create all Details under the PW/UW in a single call.
+   b. For each Detail, use `wit_add_child_work_items` MCP tool to create all its Tasks in a single call.
+   c. Create local mirror files for Details (W-NNN.md with ADO parent link). Tasks are NOT mirrored locally.
+
+6. **Delete template** — Remove `.claude/temp/decompose-W-{id}.md` after successful creation.
+7. Continue to **Finalize** steps below.
+
+#### Finalize (both modes)
+
 8. **Record decomposition on parent** — Add `## Decomposition` section to the PW/UW item file:
    ```markdown
    ## Decomposition
@@ -313,7 +386,7 @@ Break a Planned Work or Unplanned Work item into Detail and Task sub-items in AD
 9. **Post ADO comment** on the PW/UW item per Comment Protocol: "Decomposed into N Details and M Tasks."
 10. **Emit telemetry event**:
     ```json
-    { "ts": "<ISO 8601>", "type": "command", "command": "/work decompose", "item": "<id>", "project": "<project>", "outcome": "completed", "context": { "details": <N>, "tasks": <M> } }
+    { "ts": "<ISO 8601>", "type": "command", "command": "/work decompose", "item": "<id>", "project": "<project>", "outcome": "completed", "context": { "details": <N>, "tasks": <M>, "mode": "interactive|template" } }
     ```
 
 ### `/work start <id>`
@@ -545,18 +618,55 @@ Generate and present the author quiz as a standalone subcommand. Useful if the u
 4. **Move item file** to `.claude/work/archive/`
 5. **Child Cascade** — If the item has a `## Decomposition` section (i.e., it was decomposed via `/work decompose`):
    a. **Read decomposition table** — Extract Detail ADO IDs from the table
-   b. **For each Detail** — Query ADO for its child Tasks (Hierarchy-Forward relations)
-   c. **Transition Tasks to Done** — For each Task not already in a terminal state:
-      - Use the REST API (not `az boards` CLI) to batch-set fields:
-        - `System.State` → intermediate state(s) → final Done state (per Type → State Mappings)
-        - `Microsoft.VSTS.Scheduling.RemainingWork` → `0` (required by Task type for state transitions)
-        - `Microsoft.VSTS.Scheduling.DueDate` → today's date (required by Task type for Doing/Done states)
-      - Tasks follow: To Do → Doing → Done (two transitions)
-   d. **Transition Details to Completed** — For each Detail not already in a terminal state:
-      - Details follow: To do → Developing → Completed (two transitions)
-   e. **Report**: "Cascaded completion to N Details and M Tasks"
-   f. **On individual failure**: Report which items failed with the error, continue with remaining items. Do not block parent completion for child cascade failures.
-   g. **Post ADO comment** on the parent item: "Cascaded completion: N Details → Completed, M Tasks → Done"
+   b. **For each Detail** — Query ADO for its child Tasks (Hierarchy-Forward relations). Collect all Task ADO IDs and their current states. Skip items already in terminal states (Done, Completed, Removed).
+   c. **Batch transition Tasks to Done** — Use `wit_update_work_items_batch` MCP tool in two phases:
+
+      **Phase 1: Tasks → Doing** (intermediate state + required fields):
+      ```
+      wit_update_work_items_batch(updates: [
+        { id: {task_1_id}, path: "/fields/System.State", value: "Doing" },
+        { id: {task_1_id}, path: "/fields/Microsoft.VSTS.Scheduling.RemainingWork", value: "0" },
+        { id: {task_1_id}, path: "/fields/Microsoft.VSTS.Scheduling.DueDate", value: "{today}" },
+        { id: {task_2_id}, path: "/fields/System.State", value: "Doing" },
+        { id: {task_2_id}, path: "/fields/Microsoft.VSTS.Scheduling.RemainingWork", value: "0" },
+        { id: {task_2_id}, path: "/fields/Microsoft.VSTS.Scheduling.DueDate", value: "{today}" },
+        ...for each non-terminal Task
+      ])
+      ```
+
+      **Phase 2: Tasks → Done** (final state):
+      ```
+      wit_update_work_items_batch(updates: [
+        { id: {task_1_id}, path: "/fields/System.State", value: "Done" },
+        { id: {task_2_id}, path: "/fields/System.State", value: "Done" },
+        ...for each Task from phase 1
+      ])
+      ```
+
+   d. **Batch transition Details to Completed** — Use `wit_update_work_items_batch` in two phases:
+
+      **Phase 1: Details → Developing** (intermediate state):
+      ```
+      wit_update_work_items_batch(updates: [
+        { id: {detail_1_id}, path: "/fields/System.State", value: "Developing" },
+        { id: {detail_2_id}, path: "/fields/System.State", value: "Developing" },
+        ...for each non-terminal Detail
+      ])
+      ```
+
+      **Phase 2: Details → Completed** (final state):
+      ```
+      wit_update_work_items_batch(updates: [
+        { id: {detail_1_id}, path: "/fields/System.State", value: "Completed" },
+        { id: {detail_2_id}, path: "/fields/System.State", value: "Completed" },
+        ...for each Detail from phase 1
+      ])
+      ```
+
+   e. **Performance**: 4 batch MCP calls total (down from ~33 serial calls for a typical 5 Detail + 15 Task decomposition).
+   f. **Report**: "Cascaded completion to N Details and M Tasks"
+   g. **On partial failure**: Report which items failed with the error, continue with remaining items. Do not block parent completion for child cascade failures. Failed items stay in their current state — offer to retry failed items only.
+   h. **Post ADO comment** on the parent item: "Cascaded completion: N Details → Completed, M Tasks → Done"
 
    > **See AAR #14**: This step was added after discovering that `/work done` left child items open when completing a decomposed parent. [GitHub #14](https://github.com/southbendin/WorkSpaceFramework/issues/14)
 

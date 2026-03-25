@@ -11,6 +11,8 @@ const Rocktober = (() => {
   // ---------------------
   const DEFAULT_COMPETITION = 'rocktober-2024';
   const POLL_INTERVAL_MS = 60_000; // 1 min phase check
+  const WORKER_URL = 'https://rocktober-worker.southbendin.workers.dev';
+  const SEARCH_DEBOUNCE_MS = 300;
 
   // ---------------------
   // DOM References
@@ -34,6 +36,10 @@ const Rocktober = (() => {
     compInfo:       $('#comp-info'),
     userSelect:     $('#user-select'),
     currentUser:    $('#current-user'),
+    songSearch:     $('#song-search'),
+    searchInput:    $('#search-input'),
+    searchResults:  $('#search-results'),
+    searchStatus:   $('#search-status'),
   };
 
   // ---------------------
@@ -44,6 +50,8 @@ const Rocktober = (() => {
   let leaderboard = null;
   let pollTimer = null;
   let currentUser = null;
+  let searchTimer = null;
+  let submitting = false;
 
   // ---------------------
   // Data Loading
@@ -402,6 +410,182 @@ const Rocktober = (() => {
   }
 
   // ---------------------
+  // Song Search & Submission
+  // ---------------------
+
+  /**
+   * Show/hide the search panel based on phase.
+   */
+  function toggleSearchPanel(phase) {
+    if (!dom.songSearch) return;
+    if (phase === 'submission' && currentUser) {
+      dom.songSearch.classList.remove('hidden');
+    } else {
+      dom.songSearch.classList.add('hidden');
+    }
+  }
+
+  /**
+   * Initialize search input with debounce.
+   */
+  function initSearch() {
+    if (!dom.searchInput) return;
+
+    dom.searchInput.addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      const query = dom.searchInput.value.trim();
+      if (query.length < 2) {
+        hideSearchResults();
+        return;
+      }
+      searchTimer = setTimeout(() => performSearch(query), SEARCH_DEBOUNCE_MS);
+    });
+
+    // Event delegation for submit buttons in results
+    dom.searchResults?.addEventListener('click', (e) => {
+      const btn = e.target.closest('.submit-btn');
+      if (!btn || submitting) return;
+      const trackData = JSON.parse(btn.dataset.track);
+      handleSubmission(trackData);
+    });
+  }
+
+  /**
+   * Search Spotify via the Cloudflare Worker.
+   */
+  async function performSearch(query) {
+    showSearchStatus('Searching...');
+
+    try {
+      const res = await fetch(`${WORKER_URL}/search?q=${encodeURIComponent(query)}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Search failed (${res.status})`);
+      }
+
+      const data = await res.json();
+      renderSearchResults(data.tracks || []);
+    } catch (err) {
+      console.error('Search error:', err);
+      showSearchStatus(`Search failed: ${err.message}`);
+    }
+  }
+
+  function showSearchStatus(msg) {
+    if (!dom.searchStatus) return;
+    dom.searchStatus.textContent = msg;
+    dom.searchStatus.classList.remove('hidden');
+  }
+
+  function hideSearchResults() {
+    dom.searchResults?.classList.add('hidden');
+    dom.searchStatus?.classList.add('hidden');
+  }
+
+  function renderSearchResults(tracks) {
+    if (!dom.searchResults) return;
+
+    dom.searchStatus.classList.add('hidden');
+
+    if (tracks.length === 0) {
+      showSearchStatus('No results found.');
+      dom.searchResults.classList.add('hidden');
+      return;
+    }
+
+    dom.searchResults.classList.remove('hidden');
+    dom.searchResults.innerHTML = tracks.map(track => {
+      const trackJSON = escapeHTML(JSON.stringify(track));
+      return `
+        <div class="search-result-card">
+          <img class="search-album-art"
+               src="${track.albumArt || ''}"
+               alt="${escapeHTML(track.title)}"
+               onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 60 60%22><rect fill=%22%23111%22 width=%2260%22 height=%2260%22/><text x=%2230%22 y=%2234%22 text-anchor=%22middle%22 fill=%22%23333%22 font-size=%2210%22>?</text></svg>'">
+          <div class="search-track-info">
+            <div class="search-track-title">${escapeHTML(track.title)}</div>
+            <div class="search-track-artist">${escapeHTML(track.artist)}</div>
+          </div>
+          <button class="submit-btn" data-track="${trackJSON}">SUBMIT</button>
+        </div>`;
+    }).join('');
+  }
+
+  /**
+   * Submit a song to the current round via the Worker.
+   */
+  async function handleSubmission(track) {
+    if (submitting || !currentUser || !currentRound || !config) return;
+    submitting = true;
+
+    // Check if user already submitted — confirm replacement
+    const existing = (currentRound.submissions || []).find(s => s.submitter === currentUser);
+    if (existing) {
+      const ok = confirm(
+        `You already submitted "${existing.title}" by ${existing.artist}.\n\nReplace with "${track.title}" by ${track.artist}?`
+      );
+      if (!ok) {
+        submitting = false;
+        return;
+      }
+    }
+
+    showSearchStatus('Submitting...');
+
+    try {
+      const res = await fetch(`${WORKER_URL}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          competition: config.slug || DEFAULT_COMPETITION,
+          day: currentRound.day,
+          submitter: currentUser,
+          track: {
+            trackId: track.trackId,
+            title: track.title,
+            artist: track.artist,
+            albumArt: track.albumArt || '',
+          },
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Submission failed');
+
+      // Update local round data with the new submission
+      if (data.submission) {
+        const subs = currentRound.submissions || [];
+        const idx = subs.findIndex(s => s.submitter === currentUser);
+        if (idx >= 0) {
+          subs[idx] = data.submission;
+        } else {
+          subs.push(data.submission);
+        }
+        currentRound.submissions = subs;
+      }
+
+      // Refresh the submissions grid
+      const phase = getCurrentPhase(currentRound, config);
+      renderSubmissions(currentRound.submissions, phase, currentRound.day);
+
+      // Clear search
+      dom.searchInput.value = '';
+      hideSearchResults();
+      showSearchStatus(data.replaced
+        ? `Replaced! Now playing: "${track.title}"`
+        : `Submitted! "${track.title}" is locked in.`
+      );
+      setTimeout(() => dom.searchStatus?.classList.add('hidden'), 4000);
+
+    } catch (err) {
+      console.error('Submit error:', err);
+      showSearchStatus(`Submit failed: ${err.message}`);
+    } finally {
+      submitting = false;
+    }
+  }
+
+  // ---------------------
   // App Lifecycle
   // ---------------------
 
@@ -414,6 +598,7 @@ const Rocktober = (() => {
       renderCompInfo(config);
       initUser(config.members);
       initVoteHandler();
+      initSearch();
 
       // Determine current round
       const roundNum = getCurrentRoundNumber(config);
@@ -447,6 +632,7 @@ const Rocktober = (() => {
       // Render
       renderTheme(currentRound, actualRoundNum);
       renderSubmissions(currentRound.submissions, phase, currentRound.day);
+      toggleSearchPanel(phase);
       if (phase === 'results') renderWinner(currentRound);
 
       // Load leaderboard
@@ -477,6 +663,7 @@ const Rocktober = (() => {
         currentRound = round;
         renderTheme(round, roundNum);
         renderSubmissions(round.submissions, newPhase, round.day);
+        toggleSearchPanel(newPhase);
         if (newPhase === 'results') renderWinner(round);
 
         // Refresh leaderboard on phase change

@@ -194,9 +194,11 @@ If wiki publish or hyperlink fails, fall back gracefully:
 
 ## Decompose Operation
 
-Batch creation of Detail and Task items under a Planned Work or Unplanned Work item.
+Creation of Detail and Task items under a Planned Work or Unplanned Work item. Two modes: **Serial** (interactive, one-at-a-time) and **Batch** (template-based, MCP batch APIs).
 
-### Steps
+### Serial Mode (Interactive)
+
+Used by `/work decompose <id>` (without `--file`). Creates items one-at-a-time via shell scripts.
 
 1. **Create each Detail**:
    ```bash
@@ -209,14 +211,59 @@ Batch creation of Detail and Task items under a Planned Work or Unplanned Work i
    bash .claude/scripts/ado/ado-create-item.sh "Task" "{assertion_text}" --parent {detail_id}
    ```
 
-5. **Post summary comment** on parent PW/UW item (per Comment Protocol)
+3. **Post summary comment** on parent PW/UW item (per Comment Protocol)
 
-### Partial Failure Handling
+### Batch Mode (Template)
+
+Used by `/work decompose <id> --file` (ingest phase). Uses MCP batch tools for significantly faster creation.
+
+**Prerequisite**: Template has been parsed and validated by `ado-parse-decompose-template.sh`, producing structured JSON with `parentAdoId`, `details[]` (each with `title`, `description`, `tasks[]`).
+
+1. **Batch create all Details** — Single MCP call:
+   ```
+   wit_add_child_work_items(
+     parentId: {pw_ado_id},
+     project: "{project}",
+     workItemType: "Detail",
+     items: [
+       { title: "{detail_1_title}", description: "{detail_1_desc}" },
+       { title: "{detail_2_title}", description: "{detail_2_desc}" },
+       ...
+     ]
+   )
+   ```
+   Parse the response to extract created Detail ADO IDs. Map them by array position to the Detail index from the template.
+
+2. **Batch create Tasks per Detail** — One MCP call per Detail:
+   ```
+   wit_add_child_work_items(
+     parentId: {detail_N_ado_id},
+     project: "{project}",
+     workItemType: "Task",
+     items: [
+       { title: "{task_title}", description: "{task_desc}" },
+       ...
+     ]
+   )
+   ```
+   This is N calls total (one per Detail), not one per Task.
+
+3. **Post summary comment** on parent PW/UW item (per Comment Protocol)
+
+**Performance comparison** (5 Details, 15 Tasks):
+
+| Mode | API Calls | Mechanism |
+|------|-----------|-----------|
+| Serial | ~20 shell scripts (40+ `az` CLI calls) | `ado-create-item.sh` per item |
+| Batch | ~6 MCP calls | 1 for Details + 1 per Detail for Tasks |
+
+### Partial Failure Handling (both modes)
 
 If creation fails mid-batch:
 - Report what was created and what failed
 - Created items remain (don't roll back)
 - Offer retry for failed items only
+- In template mode: keep the template file with a `# PARTIAL: N of M created` comment so the user can retry
 
 ---
 
@@ -455,8 +502,22 @@ Delegate to **move** with target stage `done`. Additionally:
 
    Parse the `relations` array for Predecessor links (`System.LinkTypes.Dependency-Reverse` in the JSON response). For each linked item, check if the completion of this item unblocks it.
 
-3. **Archive locally** — Move item file to `.claude/work/archive/`
-4. **Check for locally unblocked items** — Same as current `work.md` step 5
+3. **Child Cascade (Batch Mode)** — If the parent item was decomposed (has `## Decomposition` section), cascade completion to all children using MCP batch tools:
+
+   a. **Collect child IDs** — Read Detail ADO IDs from the Decomposition table. For each Detail, query its child Tasks via `wit_get_work_item` (expand=relations).
+   b. **Batch transition** — Execute 4 `wit_update_work_items_batch` calls (see `work.md` Child Cascade steps for exact payloads):
+      1. Tasks: To Do → Doing (+ set RemainingWork=0, DueDate=today)
+      2. Tasks: Doing → Done
+      3. Details: To do → Developing
+      4. Details: Developing → Completed
+   c. **Post summary comment** on parent: "Cascaded completion: N Details → Completed, M Tasks → Done"
+
+   **Performance**: 4 batch MCP calls replaces ~33 serial `ado-update-state.sh` invocations.
+
+   **Partial failure**: Report which items succeeded/failed. Do not roll back successes. Failed items stay in current state.
+
+4. **Archive locally** — Move item file to `.claude/work/archive/`
+5. **Check for locally unblocked items** — Same as current `work.md` step 5
 
 ### block
 

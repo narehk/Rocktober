@@ -1,0 +1,9 @@
+{
+  "type": "architecture",
+  "workItem": "W-11970",
+  "created": "2026-03-24",
+  "source": "manual",
+  "status": "approved",
+  "tags": ["backend", "worker", "spotify", "api"],
+  "summary": "Architecture for Spotify search and submission flow via Cloudflare Worker proxy"
+}
