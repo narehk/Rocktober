@@ -42,6 +42,17 @@ Unified work tracking. One system, one command. Replaces separate idea and work 
 /work export <id>                    # Export local item to external provider
 ```
 
+## Plan Agent Integration (AAR #23)
+
+When Claude enters plan mode (via `/work start` or manual plan mode), generated plans should include relevant `/work` commands at appropriate lifecycle boundaries:
+
+- **Start of implementation**: `/work start <id>` (handled by the command itself when invoked)
+- **After implementation, before PR**: `/commit` then `/work review <id>`
+- **After PR merge**: `/work done <id>`
+- **If blocked**: `/work block <id> --on <reason>`
+
+Plan agents should NOT skip lifecycle steps. If a generated plan goes directly from coding to completion without a review step, the plan is incomplete. Every plan that implements a tracked work item should reference the item ID and include the full lifecycle path.
+
 ## Provider Resolution
 
 Before executing any routed subcommand, determine the active provider:
@@ -191,6 +202,11 @@ Then continue execution.
    b. **If provider is ADO** — Detect ADO work item type using provider-specific keyword matching (see `ado.md` type detection table). Confirm type via AskUserQuestion. Look up initial ADO state from CONTEXT.md type→state mappings.
 
    c. **If provider is ADO and Parent-Child Validation table exists in CONTEXT.md** — Look up the detected type in the table. If the type has valid parent types (not `(root)` or standalone), ask conversationally: "This {type} needs a parent {valid_parent_types}. What's the ADO ID of the parent? (or 'skip' to create unlinked)". If the type is auto-created (Planned Work, Unplanned Work), explain and redirect: "This type is auto-created when a {Requirement/Change Order} is approved. Use `/work ready` on the parent instead." and stop.
+
+   c2. **Decomposition-first nudge (AAR #24)** — If the detected ADO type is `Task` or `Detail` and no `--parent` was provided by the user:
+      - Check if the user's description suggests this should belong under an existing Planned Work or Unplanned Work item (look for references to existing work items, feature names matching active PW/UW items, etc.)
+      - If a likely parent exists, suggest: "This looks like it could be a child of W-{id} ({title}). Consider using `/work decompose {id}` instead of creating standalone items. Standalone Task/Detail items may lack proper ADO hierarchy for decomposition tracking."
+      - This is advisory only — do not block creation if the user chooses to proceed standalone
 
    d. **If provider is not local** — Create in external system via provider instructions (including parent linking if parent ADO ID provided). Capture external ID and URL from response. On failure, fall back to Offline Fallback Protocol.
 
@@ -401,7 +417,15 @@ If the template file already exists at `.claude/temp/decompose-W-{id}.md`:
    - If both sections present: pass silently.
 3. **Decomposition Gate** — Read the item's ADO type. If type is `Planned Work` or `Unplanned Work`:
    a. Query ADO for child items: `az boards work-item show --id {ado_id} --expand relations --org https://dev.azure.com/southbendin -o json` — check for Child relations.
-   b. If child items exist: pass silently.
+   b. If child items exist: pass silently. Report decomposition status in output: "W-{id}: {N} Details, {M} Tasks ✓"
+   b2. **Parallel planning awareness (AAR #25)** — If starting multiple items in sequence (e.g., during a planning session where several items move to in-progress), report decomposition status for ALL Planned Work / Unplanned Work items in a summary table:
+      ```
+      Decomposition Status:
+        W-001: 5 Details, 15 Tasks ✓
+        W-002: No decomposition ⚠️ — consider /work decompose W-002
+        W-003: 3 Details, 9 Tasks ✓
+      ```
+      This surfaces the decomposition requirement early rather than blocking individual items later.
    c. If no child items found, present AskUserQuestion:
       ```javascript
       {
@@ -435,7 +459,20 @@ If the template file already exists at `.claude/temp/decompose-W-{id}.md`:
       If Team Members is not configured in CONTEXT.md, skip this step entirely.
 6. **Ask for branch name**: Read CONTEXT.md for a Git Workflow section. If branch naming conventions are configured (e.g., `<type>/<id>-<slug>`), suggest a branch name following that pattern (e.g., `feat/W-001-user-auth`). If no Git Workflow section exists, suggest based on title as before.
 7. **Record branch in item file**
-8. **Post ADO comment** — Per Comment Protocol in `ado.md`, post a comment on the work item with: state transition, branch name, assignee, decomposition status.
+8. **Create branch artifact link in ADO (AAR #26)** — If provider is ADO and the item has an ADO ID in its Provider Integration section:
+   ```
+   wit_add_artifact_link(
+     workItemId: {ado_id},
+     project: "{project}",
+     linkType: "Branch",
+     repositoryId: "{repo_guid}",
+     projectId: "{project_guid}",
+     branchName: "{branch_name}"
+   )
+   ```
+   Read `repositoryId` and `projectId` from CONTEXT.md Work Provider section (or derive via `repo_get_repo_by_name_or_id`).
+   On failure: warn but do not block — artifact links are supplementary. Report: "Branch artifact link failed — branch is still created and recorded locally."
+9. **Post ADO comment** — Per Comment Protocol in `ado.md`, post a comment on the work item with: state transition, branch name, assignee, decomposition status.
 9. **Git guidance output** — Per `git-guidance.md`, read the user's Git Comfort level from CONTEXT.md Team Members table and output branch creation guidance:
    - `guided`: "Created branch `<name>` — this is your isolated workspace. Nothing here affects the main codebase until you choose to share it. **Next step**: Make your changes, then run `/commit` when ready to save a checkpoint."
    - `terse`: "Created branch `<name>`. **Next step**: `/commit` when ready."
@@ -609,14 +646,23 @@ Generate and present the author quiz as a standalone subcommand. Useful if the u
 1. **Status Gate** — Read the item's current status. If status is not `in-review`:
    - Without `--force`: **Block**: "Cannot complete W-{id} — current status is '{status}'. Item must be 'in-review'. Run `/work review {id}` first, or use `--force \"reason\"` to override."
    - With `--force`: Log override per Lifecycle Gate Check, continue.
-2. **Review Gate** — Scan `.claude/artifacts/reviews/` for a file matching `*-<id>-author-quiz.md`:
+2. **PR Merge Gate (AAR #30)** — Check if the item has a PR recorded in the `## Implementation` section:
+   a. If no PR link recorded: pass silently (not all work requires a PR)
+   b. If PR link recorded, extract PR number and check merge status:
+      - For GitHub: `gh pr view <pr_number> --json state,mergedAt --jq '{state, mergedAt}'`
+      - For ADO: Use `repo_get_pull_request_by_id` MCP tool to check status
+      - **If PR is merged**: pass silently
+      - **If PR is open/draft** without `--force`: **Block**: "PR #{number} is not yet merged. Merge the PR first, or use `--force \"PR will be merged separately\"` to override."
+      - **If PR is open/draft** with `--force`: Log override per Lifecycle Gate Check, continue.
+      - **If PR check fails** (network, auth, repo not found): Warn but do not block: "Could not verify PR merge status — proceeding. Verify manually."
+3. **Review Gate** — Scan `.claude/artifacts/reviews/` for a file matching `*-<id>-author-quiz.md`:
    - If artifact found (completed OR declined): Gate passes. Note presence for self-review detection later.
    - If artifact NOT found AND no `--force`: **Block**: "No review artifact found for W-{id}. Run `/work review {id}` first to complete the author quiz (or decline it), then retry. Or use `--force \"reason\"` to bypass."
    - If artifact NOT found AND `--force`: Log "review bypassed: {forceReason}" per Lifecycle Gate Check. Continue.
-3. **Update item file** with completion notes
+4. **Update item file** with completion notes
    b. **Set `**Completed**: YYYY-MM-DD`** in item file metadata (today's date)
-4. **Move item file** to `.claude/work/archive/`
-5. **Child Cascade** — If the item has a `## Decomposition` section (i.e., it was decomposed via `/work decompose`):
+5. **Move item file** to `.claude/work/archive/`
+6. **Child Cascade** — If the item has a `## Decomposition` section (i.e., it was decomposed via `/work decompose`):
    a. **Read decomposition table** — Extract Detail ADO IDs from the table
    b. **For each Detail** — Query ADO for its child Tasks (Hierarchy-Forward relations). Collect all Task ADO IDs and their current states. Skip items already in terminal states (Done, Completed, Removed).
    c. **Batch transition Tasks to Done** — Use `wit_update_work_items_batch` MCP tool in two phases:
@@ -669,6 +715,8 @@ Generate and present the author quiz as a standalone subcommand. Useful if the u
    h. **Post ADO comment** on the parent item: "Cascaded completion: N Details → Completed, M Tasks → Done"
 
    > **See AAR #14**: This step was added after discovering that `/work done` left child items open when completing a decomposed parent. [GitHub #14](https://github.com/southbendin/WorkSpaceFramework/issues/14)
+   >
+   > **Required Task fields**: Task transitions to Done require DueDate, Description (non-empty), and RemainingWork (set to 0). The batch calls above include these fields. If a Task was created without a Description, the transition will fail — the partial failure handler will report it. See "Required Fields by Type and State Transition" in `ado.md`.
 
 6. **Acceptance quiz** — After completing the status transition, present the acceptance verification quiz:
 

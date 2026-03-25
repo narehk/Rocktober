@@ -37,7 +37,23 @@ Generate a commit message and create a git commit for staged or unstaged changes
    - `guided`: "Committed N files — this saves a snapshot of your work with a description of what changed. Think of it as a named checkpoint you can always return to. **Next step**: Keep working, `/commit` again for another checkpoint, or `/pr` when the feature is complete."
    - `terse`: "Committed N files. **Next step**: `/commit` again or `/pr` when feature is complete."
 
-7. **Emit telemetry event** (fire-and-forget) — After a successful commit, append one JSON line to the current session file in `.claude/patterns/sessions/` (see `patterns.md` Integration Contract for session file naming and schema):
+7. **Create commit artifact link in ADO (AAR #26)** — After a successful commit, if the current branch matches a work item pattern (e.g., `feat/W-001-slug` → W-001):
+   a. Read the item file to get the ADO ID from the `## Provider Integration` section
+   b. If an ADO ID exists, create a "Fixed in Commit" artifact link:
+      ```
+      wit_add_artifact_link(
+        workItemId: {ado_id},
+        project: "{project}",
+        linkType: "Fixed in Commit",
+        repositoryId: "{repo_guid}",
+        projectId: "{project_guid}",
+        commitId: "{commit_sha}"
+      )
+      ```
+   c. On failure: warn but do not block — the commit is the primary action. Report: "Commit succeeded. ADO artifact link failed — link manually if needed."
+   d. On success: silent (no extra output needed — the commit confirmation is sufficient)
+
+8. **Emit telemetry event** (fire-and-forget) — After a successful commit, append one JSON line to the current session file in `.claude/patterns/sessions/` (see `patterns.md` Integration Contract for session file naming and schema):
    ```json
    { "ts": "<ISO 8601>", "type": "command", "command": "/commit", "project": "<project>", "outcome": "completed", "context": { "filesChanged": <count>, "commitType": "<type>" } }
    ```

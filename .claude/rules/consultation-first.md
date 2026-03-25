@@ -102,3 +102,17 @@ Being helpful doesn't mean being proactive with implementation. Sometimes the mo
 
 **Treating plan approval as blanket permission**
 Approving a plan means "implement the plan." It doesn't mean "implement anything else that comes up."
+
+**Offering unsolicited workflow suggestions (AAR #27)**
+After completing a task, do NOT suggest next lifecycle steps (e.g., "You could run /commit now" or "Next you might want to start W-005"). Report what was done and stop. The user knows their own workflow. If they want guidance, they'll ask. Mentioning future work items by name can bypass lifecycle gates — the user may act on the suggestion before the item is ready.
+
+## Long Context Resilience (AAR #16)
+
+As conversation context grows, rule salience can degrade. Observed pattern: after extended build-iterate sessions, Claude begins implementing without explicit authorization, violating this rule and roles-and-governance.md. To counteract this:
+
+1. **Re-read before acting**: Before any implementation action, mentally re-check: "Did the user explicitly authorize this specific action in this message?"
+2. **No implicit escalation**: A long productive session does NOT grant broader permission. Each new action still requires its own authorization.
+3. **Pattern momentum is not permission**: Just because the last 10 interactions followed an implement-review-iterate pattern doesn't mean the next interaction is also an implementation request. Read the actual message.
+4. **When in doubt, pause**: If you notice yourself about to implement something without clear recent authorization, stop and ask.
+
+This section exists specifically because behavioral drift was observed in long sessions (2026-03-20 Rocktober testing session). Treat its presence as a persistent reminder that applies with increasing force as context fills.

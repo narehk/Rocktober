@@ -124,28 +124,28 @@ The Mermaid diagram's `→` arrow ("approved & frozen") represents the spawn/cop
 ## Framework Changes Required
 
 ### CONTEXT.md
-- [ ] Fix wiki name typo: `Digital---Product-Portfolio.wiki` → `Digital---Project-Portfolio.wiki`
-- [ ] Expand Type → State Mappings to cover all work item types (currently only Task and Requirement are mapped)
-- [ ] Add Work Item Hierarchy section documenting the full type tree and parent-child relationships
+- [x] Fix wiki name typo: `Digital---Product-Portfolio.wiki` → `Digital---Project-Portfolio.wiki` *(fixed prior to 2026-03-25)*
+- [x] Expand Type → State Mappings to cover all work item types *(completed — all 11 types mapped in CONTEXT.md)*
+- [x] Add Work Item Hierarchy section documenting the full type tree and parent-child relationships *(completed — Parent-Child Type Validation table in CONTEXT.md)*
 
 ### ado.md Provider
-- [ ] Update keyword detection to map to correct hierarchy levels (not just flat type detection)
-- [ ] Add parent-child linking on creation (e.g., Detail under Planned Work, Task under Detail)
-- [ ] Add Gherkin format enforcement for Requirements and Change Orders
-- [ ] Add freeze/approval semantics — prevent edits to approved Requirements and Change Orders
-- [ ] Add Planned Work creation workflow (copy of approved Requirement into Org Unit bucket)
-- [ ] Add Constraint escalation logic (severe Constraints change parent Planned/Unplanned Work status)
+- [x] Update keyword detection to map to correct hierarchy levels *(completed — keyword table with hierarchy levels in ado.md)*
+- [x] Add parent-child linking on creation *(completed — parent resolution flow in ado.md `add` operation)*
+- [x] Add Gherkin format enforcement for Requirements and Change Orders *(completed — Gherkin Field Sync section + validation in freeze check)*
+- [x] Add freeze/approval semantics — prevent edits to approved Requirements and Change Orders *(completed — Freeze Semantics section in ado.md)*
+- [x] Add Planned Work creation workflow *(completed — Planned Work / Unplanned Work Creation section in ado.md)*
+- [x] Add Constraint escalation logic *(completed 2026-03-25 — AAR #22 local fix, Constraint Escalation section in ado.md)*
 
 ### work.md Command
-- [ ] `/work add` needs hierarchy awareness — what type are we creating and where does it attach?
-- [ ] `/work refine` should produce Gherkin scenarios (Given/When/Then) for Requirements and Change Orders
-- [ ] `/work ready` (or new `/work approve`) should trigger freeze + Planned Work copy creation
-- [ ] Constraint handling — `/work block` or new subcommand for attaching Constraints to Details
+- [x] `/work add` needs hierarchy awareness *(completed — ADO type detection + parent resolution in work.md)*
+- [x] `/work refine` should produce Gherkin scenarios *(completed — Gherkin-aware refine in work.md)*
+- [x] `/work ready` should trigger freeze + Planned Work copy creation *(completed — state stepping in work.md `/work ready`)*
+- [x] Constraint handling *(completed 2026-03-25 — constraint-specific flow in ado.md, decomposition-first nudge in work.md)*
 
 ### Local Work Item Files
-- [ ] Acceptance criteria format: Gherkin for Requirements/Change Orders, checklists for Details/Tasks
-- [ ] Add `Frozen` field for Requirements/Change Orders (set on approval)
-- [ ] Track parent-child relationships in item metadata (ADO parent ID + local parent W-NNN)
+- [x] Acceptance criteria format: Gherkin for Requirements/Change Orders, checklists for Details/Tasks *(completed — Acceptance Criteria Format table in CONTEXT.md)*
+- [x] Add `Frozen` field for Requirements/Change Orders *(completed — `**Frozen**: false` in item template)*
+- [x] Track parent-child relationships in item metadata *(completed — `**ADO Parent ID**:` field in item template)*
 
 ### Wiki Documentation
 - [ ] Update `How-We-Use-DevOps.md` with new diagram (replaces outdated PDF)

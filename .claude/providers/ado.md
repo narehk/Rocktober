@@ -150,9 +150,11 @@ bash .claude/scripts/ado/ado-add-relation.sh {ado_id} "Hyperlink" "{wiki_page_ur
 
 **Note**: Check for existing hyperlinks to the same path before adding to avoid duplicates (relevant for retakes).
 
-### 3. Post Summary Comment
+### 3. Post Summary Comment (MANDATORY — AAR #21)
 
-Post a comment to the ADO discussion thread with a brief summary and link:
+Post a companion comment to the ADO discussion thread with a brief summary and link. **This step is mandatory, not optional.** Hyperlinks added in step 2 appear only in the Links tab, which is not easily discoverable. The companion comment in the Discussion tab ensures the link is visible to anyone reviewing the work item's activity feed. See "Hyperlink Companion Pattern" below for the rationale.
+
+Summary comment templates:
 
 **Author Quiz**:
 ```html
@@ -289,6 +291,8 @@ Create a work item in ADO and a local mirror.
    | "issue", "problem", "outage" | Issue | Product child |
    | "request", "intake", "department" | Request | Product child |
    | "maintenance", "recurring", "operational" | Maintenance | Product child |
+
+   > **Type name precision (AAR #20)**: ADO type names must match exactly. The root type is **"Products"** (plural, not "Product"). The execution-level type is **"Detail"** (singular, not "Details"). "Planned Work" is a **Project child** (sibling of Requirement), not a Requirement child. Always verify type names against the Parent-Child Type Validation table in CONTEXT.md.
 
    **Auto-created types** — Do NOT create directly:
    | Type | Created By | Trigger |
@@ -469,9 +473,83 @@ Triggered after a Requirement or Change Order reaches "Approved" state, or when 
 
 8. **Confirm**: "Created {Planned Work/Unplanned Work} #{new_ado_id} as execution copy of {Requirement/Change Order} #{frozen_id} (child of Project #{project_ado_id})"
 
-### Constraint Escalation (Deferred)
+### Constraint Escalation (AAR #22)
 
-Constraints attach to Details during development. When a Constraint cannot be resolved at the Detail level, it should escalate to the parent Planned Work or Unplanned Work item, potentially changing its status. This workflow is deferred pending real-world usage patterns.
+Constraints are development-found blockers that attach to Detail items. When a Constraint cannot be resolved at the Detail level, it escalates upward.
+
+#### Constraint Creation Flow
+
+When `/work add` detects a Constraint type (keywords: "constraint", "blocker", "blocked"):
+
+1. **Prompt for parent Detail**: "Which Detail is this Constraint blocking? Provide the ADO ID."
+2. **Prompt for severity** via AskUserQuestion:
+   ```javascript
+   {
+     question: "What is the severity of this constraint?",
+     header: "Severity",
+     options: [
+       { label: "Critical", description: "Blocks all progress on the parent Detail — may need escalation to PW/UW level" },
+       { label: "High", description: "Blocks progress on key aspects — should be escalated for visibility" },
+       { label: "Medium", description: "Workaround exists but adds risk or effort" },
+       { label: "Low", description: "Minor inconvenience, can be resolved in normal course" }
+     ],
+     multiSelect: false
+   }
+   ```
+3. **Prompt for impact description**: "Describe the impact on the parent work item."
+4. **Create Constraint in ADO**: `ado-create-item.sh "Constraint" "{title}" --parent {detail_ado_id}`
+5. **Set severity field** (if ADO has a severity field for Constraints): `ado-update-fields.sh {id} "Microsoft.VSTS.Common.Severity={severity}"`
+
+#### Escalation Protocol
+
+When a Constraint has severity **Critical** or **High**:
+
+1. **Identify the escalation target** — Traverse upward: Constraint → parent Detail → parent Planned Work / Unplanned Work
+2. **Post escalation comment** on the PW/UW item:
+   ```html
+   <div>
+     <b>⚠️ Constraint Escalation</b><br/>
+     <b>Constraint</b>: #{constraint_id} — {title}<br/>
+     <b>Severity</b>: {severity}<br/>
+     <b>Affected Detail</b>: #{detail_id} — {detail_title}<br/>
+     <b>Impact</b>: {impact_description}<br/>
+     <b>Status</b>: Investigating
+   </div>
+   ```
+3. **Add Predecessor link** — Link the PW/UW item as blocked-by the Constraint:
+   ```bash
+   bash .claude/scripts/ado/ado-add-relation.sh {pw_ado_id} "Predecessor" {constraint_ado_id}
+   ```
+4. **Update local item** — Add `**Blocked By**: {constraint_work_item_id}` to the PW/UW local item file
+5. **Report**: "Constraint #{id} escalated to {Planned Work/Unplanned Work} #{pw_id}"
+
+#### Constraint Resolution
+
+When a Constraint moves to terminal state (`Solution Found` or `Closed - Will Not Fix`):
+
+1. **Remove Predecessor link** from parent PW/UW (if escalation created one)
+2. **Post resolution comment** on the PW/UW item:
+   ```html
+   <div>
+     <b>✓ Constraint Resolved</b><br/>
+     <b>Constraint</b>: #{constraint_id} — {title}<br/>
+     <b>Resolution</b>: {Solution Found | Closed - Will Not Fix}<br/>
+     <b>Notes</b>: {resolution_notes}
+   </div>
+   ```
+3. **Update local blocker** — Remove constraint from `**Blocked By**:` field on PW/UW item
+
+#### Low/Medium Severity Constraints
+
+For Low and Medium severity, do NOT escalate to the PW/UW level. The Constraint stays attached to its parent Detail and is resolved there. Only post a comment on the Detail item:
+```html
+<div>
+  <b>Constraint Filed</b><br/>
+  <b>Constraint</b>: #{constraint_id} — {title}<br/>
+  <b>Severity</b>: {severity}<br/>
+  Resolution tracked at Detail level.
+</div>
+```
 
 ### start
 
@@ -515,6 +593,25 @@ Delegate to **move** with target stage `done`. Additionally:
    **Performance**: 4 batch MCP calls replaces ~33 serial `ado-update-state.sh` invocations.
 
    **Partial failure**: Report which items succeeded/failed. Do not roll back successes. Failed items stay in current state.
+
+### Batch Response Handling (AAR #31)
+
+`wit_update_work_items_batch` and similar MCP batch tools return the **full work item JSON** for every item in the response. A batch of 10-25 items can produce 50-160KB of response data, which risks exceeding context limits and triggers file-based output.
+
+**Response processing protocol**:
+
+1. **Extract only status** — For each item in the response, extract only: `id`, whether it succeeded or failed, and the error `message` (if failed)
+2. **Discard full payloads immediately** — Do NOT retain the full work item JSON from batch responses in context. The full payloads contain all fields, relations, HTML descriptions, and Gherkin content that are irrelevant to the operation's outcome
+3. **Report summary only** — Output: "Batch update: N succeeded, M failed" with failed item IDs and error messages listed
+4. **On file-based output** — If the MCP response exceeds context limits and is saved to a temp file, parse the file with a minimal extraction (e.g., `node -e` or `jq`) to extract just success/failure counts, then discard the file reference
+5. **Never log full batch response** to conversation context — summarize immediately upon receipt
+
+**Example summary output**:
+```
+Batch update (Tasks → Done): 15 succeeded, 0 failed
+Batch update (Details → Completed): 10 succeeded, 1 failed
+  Failed: #12045 — "Field 'DueDate' is required for state 'Done'"
+```
 
 4. **Archive locally** — Move item file to `.claude/work/archive/`
 5. **Check for locally unblocked items** — Same as current `work.md` step 5
@@ -654,6 +751,9 @@ The `az` CLI on Windows (especially under MSYS/Git Bash) has common gotchas:
 | **Task state → Done** | Tasks require **both** a non-empty `Description` **and** `Microsoft.VSTS.Scheduling.DueDate` to transition to Done. Include `--description` and `--fields "Microsoft.VSTS.Scheduling.DueDate=YYYY-MM-DD"` |
 | **Relation type names** | `--relation-type` requires **display names** ("Parent", "Child", "Duplicate Of"), NOT reference names ("System.LinkTypes.Hierarchy-Reverse"). See Relation Type Reference table above |
 | **Empty ADO repos** | New repos have no branch — can't be published as wikis. Use `az rest` to POST to `_apis/git/repositories/{repo}/pushes` to create an initial commit without git auth |
+| **Wiki ancestor pages (AAR #18)** | Ancestor pages must exist before creating child pages. Create top-down: `/Project` → `/Project/Reviews` → `/Project/Reviews/W-NNN-quiz`. If a parent page is missing, the REST API returns a 404 |
+| **Code wiki vs project wiki (AAR #18)** | Code wikis are backed by git repos and require REST API for updates (use `ado-wiki-publish.sh`). Project wikis use `az` CLI directly. The `az devops wiki page update` command **fails on code wikis** with "versionType should be 'branch'" — always route code wiki operations through `ado-wiki-publish.sh` |
+| **Wiki type detection (AAR #18)** | Check wiki type before operations: `az devops wiki show --wiki "{name}" -o json` → look at `type` field (`"codeWiki"` vs `"projectWiki"`). Route accordingly: code wikis → REST API script, project wikis → `az` CLI |
 
 ### Recommended pattern
 
@@ -666,6 +766,56 @@ PYTHONIOENCODING=utf-8 az boards work-item create \
 ```
 
 Using `--detect true` reads org and project from `az devops configure` defaults, avoiding repeated long arguments and space-encoding issues.
+
+## Required Fields by Type and State Transition (AAR #28, #17)
+
+Not all state transitions require only the `System.State` field. Some ADO types in the Digital Product Portfolio process template have mandatory field requirements that must be set **in the same update call** as the state change, or the transition will fail with a validation error.
+
+### Task
+
+| Transition | Required Fields | Notes |
+|-----------|----------------|-------|
+| Any → Doing | (none beyond State) | |
+| Doing → Testing | (none beyond State) | |
+| Testing → Done | `Microsoft.VSTS.Scheduling.DueDate` (valid date), `System.Description` (non-empty), `Microsoft.VSTS.Scheduling.RemainingWork` (set to 0) | All three must be non-null. If a Task was created without a Description, it must be set before completing. |
+| Any → Done (skip) | Same as Testing → Done | Same requirements apply even when force-skipping intermediate states |
+
+### Detail
+
+| Transition | Required Fields | Notes |
+|-----------|----------------|-------|
+| Any → Developing | (none beyond State) | |
+| Developing → Completed | (none beyond State) | |
+| Any → Canceled | (none beyond State) | |
+
+### Planned Work / Unplanned Work
+
+| Transition | Required Fields | Notes |
+|-----------|----------------|-------|
+| To do → In Progress | (none beyond State) | |
+| In Progress → Testing | (none beyond State) | |
+| Testing → Completed | (none beyond State) | |
+
+### Requirement
+
+| Transition | Required Fields | Notes |
+|-----------|----------------|-------|
+| To Do → Scoping | (none beyond State) | |
+| Scoping → Signing | Gherkin fields must be populated (Custom.Scenario, Custom.Given, Custom.When, Custom.Then) | Validate Gherkin format locally before transitioning |
+| Signing → Approved | (none beyond State) | **Freeze point** — triggers PW/UW creation |
+
+### Change Order
+
+| Transition | Required Fields | Notes |
+|-----------|----------------|-------|
+| To do → Viable | (none beyond State) | |
+| Viable → Approved | Gherkin fields must be populated | **Freeze point** — triggers PW/UW creation |
+
+### Bug / Issue / Constraint / Discovery / Request / Maintenance
+
+No additional required fields beyond `System.State` for any transition in these types. Refer to the Type → State Mappings in CONTEXT.md for valid transitions.
+
+> **Pattern**: When `ado-update-state.sh` or `wit_update_work_items_batch` fails with a field validation error, check this table first. The error message typically includes the field name that's missing or invalid.
 
 ## Error Handling
 

@@ -59,6 +59,28 @@ When the trigger conditions are met:
 | Minor inconvenience, easy workaround | low |
 | Documentation gap, confusing but functional | low |
 
+## Self-Check Protocol (AAR #29)
+
+After ANY provider API call that returns a **structural error** (not transient), perform this check:
+
+1. **Classify the error** — Is it transient (timeout, rate limit, network blip) or structural (validation error, missing field, wrong type name, permission mismatch)?
+2. **If structural**, ask yourself:
+   - Does the error reveal a **documentation gap**? (provider doc says X, API requires Y)
+   - Does the error reveal a **missing script capability**?
+   - Does the error reveal a **platform-specific gotcha**? (Windows paths, encoding, shell differences)
+3. **If any trigger matches**: File the AAR immediately using the Auto-Filing Protocol above. Do not wait for the user to notice. Do not ask the user whether to file — the trigger rule is self-executing.
+4. **If no trigger matches**: Apply normal error recovery per `error-recovery.md`.
+
+### Most Commonly Missed Triggers
+
+- **ADO validation errors** that reveal undocumented required fields — when `az boards work-item update` or `wit_update_work_items_batch` fails with a field validation error, that is almost always a documentation gap worth an AAR
+- **ADO state transition rejections** where the process template requires intermediate states not documented in `ado.md`
+- **CLI flag mismatches** where a command documented in `ado.md` uses wrong flag names or values
+
+### Why This Section Exists
+
+In a 2026-03-24 session, Claude encountered multiple ADO API validation errors (missing DueDate, Description on Task→Done transitions) but failed to self-trigger AAR filing despite the trigger conditions in "File an AAR (bug)" being clearly met. The errors were worked around manually but no AAR was filed until the user noticed the gap. This self-check protocol makes the trigger evaluation explicit rather than relying on implicit pattern recognition.
+
 ## Integration
 
 - Uses the `/after-action` command for issue creation
