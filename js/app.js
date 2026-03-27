@@ -15,27 +15,52 @@ const Rocktober = (() => {
 
   // GitHub Actions dispatch (replaces Cloudflare Worker)
   const GITHUB_REPO = 'narehk/Rocktober';
-  const GITHUB_PAT = ''; // Fine-grained PAT: contents:write on this repo only
+  const GITHUB_PAT_KEY = 'rocktober-github-pat';
   const SPOTIFY_URL_RE = /https?:\/\/open\.spotify\.com\/(?:intl-[a-z]+\/)?track\/([a-zA-Z0-9]+)/;
+
+  /**
+   * Get the GitHub PAT from localStorage. Prompts user to enter it once if missing.
+   */
+  function getGitHubPAT() {
+    let pat = localStorage.getItem(GITHUB_PAT_KEY);
+    if (!pat) {
+      pat = prompt(
+        'Enter your GitHub Personal Access Token to enable voting and submissions.\n\n' +
+        'Create one at: https://github.com/settings/personal-access-tokens/new\n' +
+        'Scope: narehk/Rocktober → Contents: Read and write\n\n' +
+        'This is stored in your browser only — never sent to third parties.'
+      );
+      if (pat && pat.trim()) {
+        localStorage.setItem(GITHUB_PAT_KEY, pat.trim());
+      }
+    }
+    return pat || '';
+  }
 
   /**
    * Dispatch a repository_dispatch event to trigger a GitHub Action.
    * Returns true on success (204), throws on failure.
    */
   async function dispatchAction(eventType, payload) {
-    if (!GITHUB_PAT) {
-      console.warn('No GITHUB_PAT configured — dispatch skipped (local-only mode)');
+    const pat = getGitHubPAT();
+    if (!pat) {
+      console.warn('No GitHub PAT — dispatch skipped (local-only mode)');
       return false;
     }
     const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/dispatches`, {
       method: 'POST',
       headers: {
         'Accept': 'application/vnd.github.v3+json',
-        'Authorization': `token ${GITHUB_PAT}`,
+        'Authorization': `token ${pat}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ event_type: eventType, client_payload: payload }),
     });
+    if (res.status === 401 || res.status === 403) {
+      // Token expired or invalid — clear and prompt again next time
+      localStorage.removeItem(GITHUB_PAT_KEY);
+      throw new Error('GitHub token expired or invalid. Reload and try again.');
+    }
     if (!res.ok && res.status !== 204) {
       throw new Error(`Dispatch failed (${res.status})`);
     }
