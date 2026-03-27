@@ -7,6 +7,7 @@
  * Endpoints:
  *   GET  /search?q=<query>         — Search Spotify tracks
  *   POST /submit                   — Submit a song to a round
+ *   POST /vote                     — Cast a vote on a submission
  *   GET  /health                   — Health check
  *
  * Secrets (via wrangler secret put):
@@ -35,6 +36,10 @@ export default {
 
       if (url.pathname === '/submit' && request.method === 'POST') {
         return handleSubmit(request, env, corsHeaders);
+      }
+
+      if (url.pathname === '/vote' && request.method === 'POST') {
+        return handleVote(request, env, corsHeaders);
       }
 
       return json({ error: 'Not found' }, corsHeaders, 404);
@@ -242,6 +247,101 @@ async function handleSubmit(request, env, corsHeaders) {
     replaced,
     submission: newSubmission,
     totalSubmissions: submissions.length,
+  }, corsHeaders);
+}
+
+// ---------------------
+// POST /vote
+// ---------------------
+
+async function handleVote(request, env, corsHeaders) {
+  const body = await request.json().catch(() => null);
+  if (!body) {
+    return json({ error: 'Invalid JSON body' }, corsHeaders, 400);
+  }
+
+  const { competition, day, voter, trackId } = body;
+
+  // Validate required fields
+  if (!competition || !day || !voter || !trackId) {
+    return json({
+      error: 'Missing required fields: competition, day, voter, trackId',
+    }, corsHeaders, 400);
+  }
+
+  const repo = env.GITHUB_REPO;
+  const token = env.GITHUB_TOKEN;
+
+  if (!repo || !token) {
+    return json({ error: 'Server misconfigured: missing GITHUB_REPO or GITHUB_TOKEN' }, corsHeaders, 500);
+  }
+
+  // 1. Read the current round JSON from GitHub
+  const paddedDay = String(day).padStart(2, '0');
+  const filePath = `competitions/${competition}/rounds/day-${paddedDay}.json`;
+  const { content: roundData, sha } = await readGitHubFile(repo, filePath, token);
+
+  if (!roundData) {
+    return json({ error: `Round file not found: ${filePath}` }, corsHeaders, 404);
+  }
+
+  // 2. Validate phase is "voting"
+  if (roundData.phase !== 'voting') {
+    return json({
+      error: `Round is in "${roundData.phase}" phase — voting is not open`,
+    }, corsHeaders, 409);
+  }
+
+  // 3. Validate voter is a member (read config)
+  const configPath = `competitions/${competition}/config.json`;
+  const { content: configData } = await readGitHubFile(repo, configPath, token);
+
+  if (configData) {
+    const memberNames = (configData.members || []).map(m => m.name);
+    if (!memberNames.includes(voter)) {
+      return json({ error: `"${voter}" is not a member of this competition` }, corsHeaders, 403);
+    }
+  }
+
+  // 4. Find the submission being voted for
+  const submissions = roundData.submissions || [];
+  const targetSub = submissions.find(s => s.trackId === trackId);
+  if (!targetSub) {
+    return json({ error: 'Submission not found for given trackId' }, corsHeaders, 404);
+  }
+
+  // 5. Self-vote check (configurable)
+  const selfVoteAllowed = configData?.selfVoteAllowed ?? false;
+  if (!selfVoteAllowed && targetSub.submitter === voter) {
+    return json({ error: 'Self-voting is not allowed' }, corsHeaders, 403);
+  }
+
+  // 6. Duplicate vote check (server-side — one vote per member per round)
+  const existingVotes = roundData.votes || [];
+  if (existingVotes.some(v => v.voter === voter)) {
+    return json({ error: 'You have already voted in this round' }, corsHeaders, 409);
+  }
+
+  // 7. Record vote: add to votes array AND increment sub.votes
+  existingVotes.push({ voter, trackId });
+  roundData.votes = existingVotes;
+  targetSub.votes = (targetSub.votes || 0) + 1;
+
+  // 8. Write updated round JSON back to GitHub
+  await writeGitHubFile(
+    repo,
+    filePath,
+    roundData,
+    sha,
+    `Vote: ${voter} → ${targetSub.title} by ${targetSub.submitter}`,
+    token
+  );
+
+  return json({
+    success: true,
+    voter,
+    votedFor: { submitter: targetSub.submitter, title: targetSub.title },
+    totalVotes: existingVotes.length,
   }, corsHeaders);
 }
 

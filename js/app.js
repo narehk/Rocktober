@@ -247,18 +247,54 @@ const Rocktober = (() => {
   }
 
   /**
-   * Handle a vote action. Stores in localStorage for now;
-   * W-11970 will add Cloudflare Worker POST.
+   * Handle a vote action. Persists to Worker (which commits to GitHub)
+   * with optimistic localStorage for instant UI feedback.
    */
-  function handleVote(trackId, submitter, roundDay) {
-    if (submitter === currentUser) return;
+  async function handleVote(trackId, submitter, roundDay) {
+    // Self-vote prevention (configurable)
+    const selfVoteAllowed = config?.selfVoteAllowed ?? false;
+    if (!selfVoteAllowed && submitter === currentUser) return;
+
+    // Already voted (client-side fast check)
     if (getStoredVote(roundDay)) return;
 
+    // Optimistic UI: store locally and re-render immediately
     localStorage.setItem(voteKey(roundDay), trackId);
-
-    // Re-render to show voted state
     const phase = getCurrentPhase(currentRound, config);
     renderSubmissions(currentRound.submissions, phase, roundDay);
+
+    // Persist to backend
+    try {
+      const res = await fetch(`${WORKER_URL}/vote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          competition: config?.slug || DEFAULT_COMPETITION,
+          day: roundDay,
+          voter: currentUser,
+          trackId,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        // Revert optimistic update on failure
+        localStorage.removeItem(voteKey(roundDay));
+        renderSubmissions(currentRound.submissions, phase, roundDay);
+        console.error('Vote failed:', data.error);
+        return;
+      }
+
+      // Update local round data to reflect the vote
+      const sub = (currentRound.submissions || []).find(s => s.trackId === trackId);
+      if (sub) sub.votes = (sub.votes || 0) + 1;
+
+    } catch (err) {
+      // Revert optimistic update on network error
+      localStorage.removeItem(voteKey(roundDay));
+      renderSubmissions(currentRound.submissions, phase, roundDay);
+      console.error('Vote error:', err);
+    }
   }
 
   /**
@@ -317,7 +353,8 @@ const Rocktober = (() => {
     dom.submissionsGrid.innerHTML = submissions.map(sub => {
       let voteButton = '';
       if (phase === 'voting') {
-        const isOwnSong = currentUser && sub.submitter === currentUser;
+        const selfVoteAllowed = config?.selfVoteAllowed ?? false;
+        const isOwnSong = !selfVoteAllowed && currentUser && sub.submitter === currentUser;
         const isVoted = existingVote === sub.trackId;
         const hasVoted = !!existingVote;
 
