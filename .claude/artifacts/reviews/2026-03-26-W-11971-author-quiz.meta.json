@@ -1,0 +1,11 @@
+{
+  "type": "author-quiz",
+  "workItem": "W-11971",
+  "project": "Rocktober",
+  "created": "2026-03-26",
+  "source": "/work review",
+  "status": "completed",
+  "tags": ["review", "quiz", "author"],
+  "summary": "Author quiz — 2/4",
+  "extra": { "score": "2/4", "questions": 4, "reviewedBy": "KJ" }
+}
