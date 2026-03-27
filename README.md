@@ -49,6 +49,8 @@ The app runs on **GitHub Pages** (static hosting, free). Submissions and votes a
 
 GitHub Actions run on cron to advance the competition through its daily phases.
 
+**Why a personal account?** Rocktober is developed for a City of South Bend team but hosted under a personal GitHub account. GitHub Pages requires public repositories on free organization plans — since the city's GitHub org restricts public repos, hosting here keeps the app free to deploy while ADO (Azure DevOps) remains the system of record for work tracking.
+
 ## Status
 
 **Shipped**: Project scaffolding, competition data model, daily round UI, Spotify song search, vote persistence, leaderboard, GitHub Actions automation
