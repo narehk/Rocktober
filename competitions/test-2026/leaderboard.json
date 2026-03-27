@@ -1,0 +1,12 @@
+{
+  "competition": "test-2026",
+  "lastUpdated": "2026-03-25T16:30:00-04:00",
+  "roundsCompleted": 2,
+  "standings": [
+    { "name": "Kerry", "wins": 1, "submissions": 2, "winRate": 0.5 },
+    { "name": "Tanya", "wins": 1, "submissions": 2, "winRate": 0.5 },
+    { "name": "Marcus", "wins": 0, "submissions": 2, "winRate": 0 },
+    { "name": "Devon", "wins": 0, "submissions": 2, "winRate": 0 },
+    { "name": "Aaliyah", "wins": 0, "submissions": 2, "winRate": 0 }
+  ]
+}

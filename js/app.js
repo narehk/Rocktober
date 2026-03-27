@@ -9,7 +9,7 @@ const Rocktober = (() => {
   // ---------------------
   // Configuration
   // ---------------------
-  const DEFAULT_COMPETITION = 'rocktober-2024';
+  const DEFAULT_COMPETITION = new URLSearchParams(window.location.search).get('competition') || 'rocktober-2024';
   const POLL_INTERVAL_MS = 60_000; // 1 min phase check
   const WORKER_URL = 'https://rocktober-worker.southbendin.workers.dev';
   const SEARCH_DEBOUNCE_MS = 300;
