@@ -11,8 +11,70 @@ const Rocktober = (() => {
   // ---------------------
   const DEFAULT_COMPETITION = new URLSearchParams(window.location.search).get('competition') || 'rocktober-2024';
   const POLL_INTERVAL_MS = 60_000; // 1 min phase check
-  const WORKER_URL = 'https://rocktober-worker.southbendin.workers.dev';
   const SEARCH_DEBOUNCE_MS = 300;
+
+  // GitHub Actions dispatch (replaces Cloudflare Worker)
+  const GITHUB_REPO = 'narehk/Rocktober';
+  const GITHUB_PAT_KEY = 'rocktober-github-pat';
+  const SPOTIFY_URL_RE = /https?:\/\/open\.spotify\.com\/(?:intl-[a-z]+\/)?track\/([a-zA-Z0-9]+)/;
+
+  /**
+   * Get the GitHub PAT from localStorage. Prompts user to enter it once if missing.
+   */
+  function getGitHubPAT() {
+    let pat = localStorage.getItem(GITHUB_PAT_KEY);
+    if (!pat) {
+      pat = prompt(
+        'Enter your GitHub Personal Access Token to enable voting and submissions.\n\n' +
+        'Create one at: https://github.com/settings/personal-access-tokens/new\n' +
+        'Scope: narehk/Rocktober → Contents: Read and write\n\n' +
+        'This is stored in your browser only — never sent to third parties.'
+      );
+      if (pat && pat.trim()) {
+        localStorage.setItem(GITHUB_PAT_KEY, pat.trim());
+      }
+    }
+    return pat || '';
+  }
+
+  /**
+   * Dispatch a repository_dispatch event to trigger a GitHub Action.
+   * Returns true on success (204), throws on failure.
+   */
+  async function dispatchAction(eventType, payload) {
+    const pat = getGitHubPAT();
+    if (!pat) {
+      console.warn('No GitHub PAT — dispatch skipped (local-only mode)');
+      return false;
+    }
+    const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/dispatches`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/vnd.github.v3+json',
+        'Authorization': `token ${pat}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ event_type: eventType, client_payload: payload }),
+    });
+    if (res.status === 401 || res.status === 403) {
+      // Token expired or invalid — clear and prompt again next time
+      localStorage.removeItem(GITHUB_PAT_KEY);
+      throw new Error('GitHub token expired or invalid. Reload and try again.');
+    }
+    if (!res.ok && res.status !== 204) {
+      throw new Error(`Dispatch failed (${res.status})`);
+    }
+    return true;
+  }
+
+  /**
+   * Schedule reconciliation polls after a dispatch.
+   * Actions take ~5-15s, so poll at 8s and 20s for faster feedback.
+   */
+  function scheduleReconciliation(roundNum) {
+    setTimeout(() => refreshRound(roundNum), 8000);
+    setTimeout(() => refreshRound(roundNum), 20000);
+  }
 
   // ---------------------
   // DOM References
@@ -253,7 +315,7 @@ const Rocktober = (() => {
   }
 
   /**
-   * Handle a vote action. Persists to Worker (which commits to GitHub)
+   * Handle a vote action. Dispatches to GitHub Actions for persistence,
    * with optimistic localStorage for instant UI feedback.
    */
   async function handleVote(trackId, submitter, roundDay) {
@@ -269,37 +331,28 @@ const Rocktober = (() => {
     const phase = getCurrentPhase(currentRound, config);
     renderSubmissions(currentRound.submissions, phase, roundDay);
 
-    // Persist to backend
+    // Update local round data optimistically
+    const sub = (currentRound.submissions || []).find(s => s.trackId === trackId);
+    if (sub) sub.votes = (sub.votes || 0) + 1;
+
+    // Dispatch to GitHub Actions for persistence
     try {
-      const res = await fetch(`${WORKER_URL}/vote`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          competition: config?.slug || DEFAULT_COMPETITION,
-          day: roundDay,
-          voter: currentUser,
-          trackId,
-        }),
+      await dispatchAction('vote', {
+        competition: config?.slug || DEFAULT_COMPETITION,
+        day: roundDay,
+        voter: currentUser,
+        trackId,
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        // Revert optimistic update on failure
-        localStorage.removeItem(voteKey(roundDay));
-        renderSubmissions(currentRound.submissions, phase, roundDay);
-        console.error('Vote failed:', data.error);
-        return;
-      }
-
-      // Update local round data to reflect the vote
-      const sub = (currentRound.submissions || []).find(s => s.trackId === trackId);
-      if (sub) sub.votes = (sub.votes || 0) + 1;
+      // Schedule reconciliation polls (Actions take ~5-15s)
+      scheduleReconciliation(currentRound.day);
 
     } catch (err) {
-      // Revert optimistic update on network error
+      // Revert optimistic update on dispatch failure
       localStorage.removeItem(voteKey(roundDay));
+      if (sub) sub.votes = Math.max(0, (sub.votes || 1) - 1);
       renderSubmissions(currentRound.submissions, phase, roundDay);
-      console.error('Vote error:', err);
+      console.error('Vote dispatch error:', err);
     }
   }
 
@@ -494,23 +547,41 @@ const Rocktober = (() => {
   }
 
   /**
-   * Search Spotify via the Cloudflare Worker.
+   * Resolve a Spotify track URL via oEmbed (public, no auth needed).
+   * Falls back to a helpful message if input isn't a valid Spotify URL.
    */
   async function performSearch(query) {
-    showSearchStatus('Searching...');
+    const trimmed = query.trim();
+
+    // Check if it's a Spotify track URL
+    const match = trimmed.match(SPOTIFY_URL_RE);
+    if (!match) {
+      showSearchStatus('Paste a Spotify track link (e.g., https://open.spotify.com/track/...)');
+      dom.searchResults?.classList.add('hidden');
+      return;
+    }
+
+    const trackId = match[1];
+    showSearchStatus('Loading track info...');
 
     try {
-      const res = await fetch(`${WORKER_URL}/search?q=${encodeURIComponent(query)}`);
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || `Search failed (${res.status})`);
-      }
+      const res = await fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(trimmed)}`);
+      if (!res.ok) throw new Error(`Spotify returned ${res.status}`);
 
       const data = await res.json();
-      renderSearchResults(data.tracks || []);
+
+      // oEmbed returns: title (track), author_name (artist), thumbnail_url (album art)
+      const track = {
+        trackId,
+        title: data.title || 'Unknown Track',
+        artist: data.author_name || 'Unknown Artist',
+        albumArt: data.thumbnail_url || '',
+      };
+
+      renderSearchResults([track]);
     } catch (err) {
-      console.error('Search error:', err);
-      showSearchStatus(`Search failed: ${err.message}`);
+      console.error('oEmbed error:', err);
+      showSearchStatus(`Couldn't load track info. Check the URL and try again.`);
     }
   }
 
@@ -555,7 +626,7 @@ const Rocktober = (() => {
   }
 
   /**
-   * Submit a song to the current round via the Worker.
+   * Submit a song to the current round via GitHub Actions dispatch.
    */
   async function handleSubmission(track) {
     if (submitting || !currentUser || !currentRound || !config) return;
@@ -563,6 +634,7 @@ const Rocktober = (() => {
 
     // Check if user already submitted — confirm replacement
     const existing = (currentRound.submissions || []).find(s => s.submitter === currentUser);
+    const isReplacement = !!existing;
     if (existing) {
       const ok = confirm(
         `You already submitted "${existing.title}" by ${existing.artist}.\n\nReplace with "${track.title}" by ${track.artist}?`
@@ -576,36 +648,37 @@ const Rocktober = (() => {
     showSearchStatus('Submitting...');
 
     try {
-      const res = await fetch(`${WORKER_URL}/submit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          competition: config.slug || DEFAULT_COMPETITION,
-          day: currentRound.day,
-          submitter: currentUser,
-          track: {
-            trackId: track.trackId,
-            title: track.title,
-            artist: track.artist,
-            albumArt: track.albumArt || '',
-          },
-        }),
+      const entry = {
+        submitter: currentUser,
+        title: track.title,
+        artist: track.artist,
+        albumArt: track.albumArt || '',
+        trackId: track.trackId,
+        votes: 0,
+      };
+
+      // Dispatch to GitHub Actions
+      await dispatchAction('submit-song', {
+        competition: config.slug || DEFAULT_COMPETITION,
+        day: currentRound.day,
+        submitter: currentUser,
+        track: {
+          trackId: track.trackId,
+          title: track.title,
+          artist: track.artist,
+          albumArt: track.albumArt || '',
+        },
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Submission failed');
-
-      // Update local round data with the new submission
-      if (data.submission) {
-        const subs = currentRound.submissions || [];
-        const idx = subs.findIndex(s => s.submitter === currentUser);
-        if (idx >= 0) {
-          subs[idx] = data.submission;
-        } else {
-          subs.push(data.submission);
-        }
-        currentRound.submissions = subs;
+      // Optimistic local update
+      const subs = currentRound.submissions || [];
+      const idx = subs.findIndex(s => s.submitter === currentUser);
+      if (idx >= 0) {
+        subs[idx] = entry;
+      } else {
+        subs.push(entry);
       }
+      currentRound.submissions = subs;
 
       // Refresh the submissions grid
       const phase = getCurrentPhase(currentRound, config);
@@ -614,14 +687,17 @@ const Rocktober = (() => {
       // Clear search
       dom.searchInput.value = '';
       hideSearchResults();
-      showSearchStatus(data.replaced
+      showSearchStatus(isReplacement
         ? `Replaced! Now playing: "${track.title}"`
         : `Submitted! "${track.title}" is locked in.`
       );
       setTimeout(() => dom.searchStatus?.classList.add('hidden'), 4000);
 
+      // Schedule reconciliation
+      scheduleReconciliation(currentRound.day);
+
     } catch (err) {
-      console.error('Submit error:', err);
+      console.error('Submit dispatch error:', err);
       showSearchStatus(`Submit failed: ${err.message}`);
     } finally {
       submitting = false;

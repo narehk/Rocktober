@@ -1,0 +1,37 @@
+name: Process Vote
+
+on:
+  repository_dispatch:
+    types: [vote]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: round-mutation-${{ github.event.client_payload.competition }}-${{ github.event.client_payload.day }}
+  cancel-in-progress: false
+
+jobs:
+  process-vote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Process vote
+        run: node .github/scripts/process-vote.js '${{ toJSON(github.event.client_payload) }}'
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add competitions/
+          if git diff --cached --quiet; then
+            echo "No changes to commit (vote may have been rejected)."
+          else
+            git commit -m "vote: ${{ github.event.client_payload.voter }} → round ${{ github.event.client_payload.day }} [automated]"
+            git push
+          fi

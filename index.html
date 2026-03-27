@@ -45,12 +45,15 @@
 
         <!-- Song Search (submission phase only) -->
         <div class="song-search hidden" id="song-search">
-          <h3 class="pixel-text search-heading">SEARCH & SUBMIT</h3>
+          <h3 class="pixel-text search-heading">PASTE & SUBMIT</h3>
           <div class="search-bar">
             <input type="text" id="search-input" class="search-input"
-                   placeholder="Search for a song..." autocomplete="off">
+                   placeholder="Paste a Spotify track link..." autocomplete="off">
             <span class="search-icon" aria-hidden="true">&#9835;</span>
           </div>
+          <p class="search-help" style="color: var(--neon-blue); font-size: 0.75rem; margin: 0.25rem 0 0; opacity: 0.7;">
+            e.g. https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC
+          </p>
           <div class="search-status hidden" id="search-status"></div>
           <div class="search-results hidden" id="search-results"></div>
         </div>
