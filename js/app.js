@@ -93,21 +93,27 @@ const Rocktober = (() => {
   // ---------------------
 
   /**
-   * Determine current round number from config dates
+   * Determine current round number from config dates.
+   * Uses competition timezone so 9 PM ET on Mar 26 = Day 3 (not Day 4 in UTC).
    */
   function getCurrentRoundNumber(cfg) {
-    const now = new Date();
-    const start = new Date(cfg.startDate);
-    const end = new Date(cfg.endDate);
+    const tz = cfg.schedule?.timezone || 'America/Indiana/Indianapolis';
+    // Get today's date string in the competition timezone (YYYY-MM-DD)
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: tz });
+    const startStr = cfg.startDate;
+    const endStr = cfg.endDate;
 
-    if (now < start) return 0;  // Competition hasn't started
+    if (todayStr < startStr) return 0;  // Competition hasn't started
 
-    if (now > end) {
+    if (todayStr > endStr) {
       // Competition ended — show the latest round
       return cfg.totalRounds || -1;
     }
 
-    const diffDays = Math.floor((now - start) / (1000 * 60 * 60 * 24));
+    // Diff in days using date-only strings (no UTC midnight issues)
+    const todayMs = new Date(todayStr + 'T00:00:00').getTime();
+    const startMs = new Date(startStr + 'T00:00:00').getTime();
+    const diffDays = Math.round((todayMs - startMs) / (1000 * 60 * 60 * 24));
     return diffDays + 1;
   }
 
