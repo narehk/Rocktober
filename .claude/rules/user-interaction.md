@@ -4,17 +4,40 @@ This document defines consistent patterns for how Claude Code skills and command
 
 ## Core Principle
 
-**Use the right interaction pattern for the type of decision needed.**
+**Use the right interaction pattern for the type of decision needed — and the current phase.**
 
-**Note**: This document defines HOW to interact with users during tasks. For WHEN to take action vs discuss, see **`consultation-first.md`**.
+**Note**: This document defines HOW to interact with users during tasks. For WHEN to take action vs discuss, see **`consultation-first.md`**. For phase-dependent behavior, see **`rapid-cycle.md`**.
+
+## Phase-Dependent Interaction
+
+Interaction patterns shift based on the current development phase (see `rapid-cycle.md`):
+
+| Phase | Primary Pattern | Guidance |
+|-------|----------------|----------|
+| **Discovery** | AskUserQuestion + Conversational | Shape requirements, get direction, create visual artifacts |
+| **Build** | **Procedural** | Minimize questions. Make decisions. Document rationale. |
+| **Review** | Conversational | Respond to human feedback. Settings page + conversation. |
+| **Change Orders** | Procedural | Implement tracked changes without re-asking. |
+
+### Build Phase — Minimize Questions
+
+During the build phase, Claude operates with full autonomy. Interaction rules:
+- **Do not ask** implementation questions — make the decision and document it
+- **Do not present** choices — pick the best option and proceed
+- **Do not pause** for approval — build end-to-end
+- **Do document** decisions in work items for review phase visibility
+
+### Discovery Phase — Full Interaction
+
+During discovery, all interaction patterns are available. Use the decision framework below to choose the right one.
 
 ## Decision Framework
 
 | Pattern | When to Use | Examples |
 |---------|-------------|----------|
-| **AskUserQuestion** | Finite options (2-4 choices), binary decisions, category selection, approval gates | Category selection, type selection, yes/no confirmations |
+| **AskUserQuestion** | Finite options (2-4 choices), binary decisions, category selection | Category selection, type selection, approach selection during discovery |
 | **Conversational** | Open-ended text needed, complex discussions, context-dependent options, expert consultations | Architecture discussions, requirement clarification, design reviews |
-| **Procedural (no questions)** | Fully automated tasks, read-only analysis, batch operations | `/commit`, `/review`, `/test`, code analysis |
+| **Procedural (no questions)** | Fully automated tasks, read-only analysis, batch operations, **entire build phase** | `/commit`, `/review`, `/test`, code analysis, build phase implementation |
 
 ## When to Use AskUserQuestion
 
@@ -117,13 +140,17 @@ Expert skills should use conversational questions because:
 ## Decision Tree
 
 ```
-Need user input?
-├─ No → Procedural (just do it)
-└─ Yes → What kind?
-    ├─ 2-4 finite options? → AskUserQuestion
-    ├─ Open-ended text? → Conversational
-    ├─ Complex discussion? → Conversational
-    └─ Context-dependent? → Conversational
+What phase am I in?
+├─ Build → Procedural (just do it, document decisions)
+├─ Change Orders → Procedural (implement tracked changes)
+└─ Discovery or Review →
+    Need user input?
+    ├─ No → Procedural (just do it)
+    └─ Yes → What kind?
+        ├─ 2-4 finite options? → AskUserQuestion
+        ├─ Open-ended text? → Conversational
+        ├─ Complex discussion? → Conversational
+        └─ Context-dependent? → Conversational
 ```
 
 ## Anti-Patterns
@@ -151,4 +178,11 @@ Need user input?
 // BAD: /commit should just generate the message
 { question: "Should I create a commit?", options: ["Yes", "No"] }
 // The user already ran /commit, they want a commit!
+```
+
+### Asking During Build Phase
+```javascript
+// BAD: Build phase = full autonomy, no questions
+{ question: "Should I use flexbox or grid?", options: ["Flexbox", "Grid"] }
+// Pick one, implement it, document the choice in the work item
 ```

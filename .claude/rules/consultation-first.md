@@ -2,117 +2,142 @@
 
 ## Core Principle
 
-**Default to consultation, not implementation.**
+**Phase-dependent consultation.** Consultation behavior adapts to the current development phase. During discovery, Claude discusses and confirms. During build, Claude proceeds autonomously. During review, Claude responds to feedback.
 
-When a user asks a question or describes a problem, Claude should:
+See **`rapid-cycle.md`** for the full phase model.
+
+## Phase Behavior
+
+### Discovery Phase — Consultation Active
+
+Default to discussion, not implementation. When the user describes a problem or asks a question:
+
 1. Explain options and trade-offs
 2. Discuss approaches
-3. Wait for explicit authorization before implementing
-
-## Why This Matters
-
-Users should feel safe having exploratory conversations without fear that Claude will:
-- Start coding without permission
-- Make changes to files during what was meant to be a discussion
-- Interpret questions as action requests
-
-## Always Ask Before Implementing
-
-**Even explicit requests require confirmation.** This ensures the user always feels in control.
+3. Create visual artifacts (pencil.dev mockups, process maps)
+4. Wait for direction before moving to decomposition
 
 | User Says | Claude Should Do |
 |-----------|------------------|
-| "Fix this bug" | Explain the fix, then ask: "Should I proceed?" |
-| "Implement this feature" | Describe approach, then ask: "Should I proceed?" |
-| "How can we fix X?" | Discuss options, ask: "Would you like me to implement one of these?" |
-| "What do you think about..." | Discuss only, don't offer to implement unless relevant |
+| "How can we handle X?" | Discuss options, create artifacts to illustrate |
+| "What do you think about this approach?" | Discuss, challenge if asked, propose alternatives |
+| "I want to build Y" | Shape requirements, create mockups/process maps, accumulate context |
 
-### Authorization Phrases (Proceed After These)
-Only implement after user explicitly confirms:
-- "Yes", "Go ahead", "Proceed", "Do it"
-- "Yes, implement that", "Make the change"
-- "Approved", "Looks good, do it"
+### Decomposition Phase — Automatic
 
-### Slash Commands (Exception)
-Running a command like `/commit`, `/test`, `/verify` IS explicit authorization.
-The user invoked the command, so proceed with its defined behavior.
+Claude decomposes approved requirements into ADO work items without per-item approval. The human approved the direction during discovery — decomposition is execution of that approval.
 
-## Escalation Pattern
+### Build Phase — Full Autonomy
 
-1. **User asks question** → Claude explains options
-2. **Claude thinks implementation is warranted** → Ask: "Would you like me to implement this?"
-3. **Change is non-trivial** → Offer: "This is a significant change - should we enter plan mode first?"
-4. **User explicitly authorizes** → Proceed with implementation
+**Claude proceeds without pausing.** No consultation gates. No "should I proceed?" checkpoints.
+
+- Make all technical decisions
+- Implement end-to-end
+- Auto-update work item status
+- Create ADO Constraint items when constraints are found
+- Document scope drift with justification
+- Scaffold the `/settings` page
+
+**What Claude still communicates during build:**
+- Constraints discovered (as ADO Constraint items)
+- Scope drift (documented in work items, summarized at completion)
+
+**What Claude does NOT do during build:**
+- Ask permission for implementation choices
+- Present artifacts for approval
+- Pause for consultation on approach
+- Wait for feedback between tasks
+
+### Review Phase — Human-Driven
+
+Claude responds to feedback. The human drives this phase:
+- Conversational feedback → Claude implements
+- Settings page tweaks → Claude reads exported config and implements
+- Quiz results → Claude addresses gaps
+- All feedback batched into a Change Order per review cycle
+
+### Change Order Phase — Execute
+
+Claude implements tracked change orders without re-asking. The Change Order IS the authorization.
+
+## Slash Commands (Unchanged)
+
+Running a command like `/commit`, `/test`, `/verify` IS explicit authorization in any phase. The user invoked the command — proceed with its defined behavior.
+
+## Escalation Pattern (Discovery Phase Only)
+
+During discovery, the escalation pattern still applies:
+
+1. **User asks question** → Claude explains options, creates visual artifacts
+2. **Claude thinks the context mass is sufficient** → Proposes readiness: "I have enough context to build. Here's what I plan to create."
+3. **User approves** → Transition to decomposition + build
 
 ## Examples
 
-### Correct: Exploratory Question
+### Correct: Discovery Phase Consultation
 
-**User**: "How can we prevent this from happening again?"
-**Claude**: "There are a few approaches we could take:
-1. Add a validation step before commit
-2. Create a checklist in the workflow
-3. Add automated checks
+**User**: "I want to add a voting system to the app"
+**Claude**: "Here are the key design decisions for a voting system:
 
-Would you like me to implement one of these, or discuss them further?"
+[Creates pencil.dev mockup showing voting UI]
+[Creates process map showing vote flow: submit → validate → tally → announce]
 
-### Incorrect: Jumping to Implementation
+Key questions:
+- Single vote per person or ranked choice?
+- Real-time results or hidden until deadline?
+- How do we handle ties?
 
-**User**: "How can we prevent this from happening again?"
-**Claude**: "Let me fix this by adding a rule..." *[starts editing files]*
+Let's shape these requirements before I build."
 
-### Correct: Even Direct Requests Need Confirmation
+### Correct: Build Phase Autonomy
 
-**User**: "Fix this bug"
-**Claude**: "I can see the issue. The fix would be to [explanation].
+**User approved discovery, Claude is building**
+**Claude**: *[Implements voting UI, creates ballot logic, builds tally system, scaffolds settings page with vote-deadline and tie-break-method variables, updates ADO work items as each component completes]*
 
-Should I proceed with this fix?"
+At completion: "MVP delivered. Here's what I built:
+- Voting UI with single-choice ballots
+- Real-time vote tally (hidden until deadline)
+- Tie-break by earliest submission
+- Settings page at `/settings` with configurable deadline and tie-break method
 
-**User**: "Yes, go ahead"
-**Claude**: *[now implements the fix]*
+Scope drift: I added a 'vote confirmation' toast that wasn't in the requirements — felt necessary for UX. See W-015 for details."
 
-### Correct: Non-Trivial Changes Offer Plan Mode
+### Correct: Review Phase Response
 
-**User**: "Add user authentication to the app"
-**Claude**: "This is a significant feature that will touch multiple files. I'd recommend:
-- JWT-based auth with refresh tokens
-- Login/register pages
-- Protected route middleware
+**User**: "The voting deadline should be configurable per round, not global"
+**Claude**: "Got it. I'll capture that in the Change Order for this review cycle along with any other feedback."
 
-This is non-trivial - should we enter plan mode to design the approach first?"
+### Incorrect: Asking Permission During Build
 
-## Integration with Other Rules
-
-- **roles-and-governance.md**: Defines the working relationship (you=architect, Claude=partner)
-- **user-interaction.md**: Defines HOW to interact (menus vs conversation)
-- **consultation-first.md**: Defines WHEN to take action vs discuss (this rule)
-- **artifact-first.md**: Defines what to show before building
-- **file-organization.md**: Defines handling unexpected file changes
+**Claude**: "I'm about to implement the tally logic. Should I use a simple count or weighted scoring?"
+*[Wrong — during build, Claude decides and documents]*
 
 ## Anti-Patterns
 
-**Interpreting questions as commands**
-"How do we fix this?" does not mean "Fix this"
+**Asking permission during build phase**
+The whole point of the rapid cycle is that Claude builds autonomously. Don't revert to gate-heavy behavior.
 
-**Assuming permission from previous context**
-Just because user asked Claude to implement something earlier doesn't mean all subsequent questions are action requests.
+**Skipping discovery consultation**
+Discovery is where alignment happens. Don't rush to build without adequate context mass.
 
-**Over-eagerness to help**
-Being helpful doesn't mean being proactive with implementation. Sometimes the most helpful thing is to explain and wait.
-
-**Treating plan approval as blanket permission**
-Approving a plan means "implement the plan." It doesn't mean "implement anything else that comes up."
+**Treating review feedback as requiring re-discovery**
+Review feedback is incremental. It becomes a Change Order, not a return to discovery (unless the feedback is fundamentally "wrong direction").
 
 **Offering unsolicited workflow suggestions (AAR #27)**
-After completing a task, do NOT suggest next lifecycle steps (e.g., "You could run /commit now" or "Next you might want to start W-005"). Report what was done and stop. The user knows their own workflow. If they want guidance, they'll ask. Mentioning future work items by name can bypass lifecycle gates — the user may act on the suggestion before the item is ready.
+After completing a task, do NOT suggest next lifecycle steps. Report what was done and stop.
 
 ## Long Context Resilience (AAR #16)
 
-As conversation context grows, rule salience can degrade. Observed pattern: after extended build-iterate sessions, Claude begins implementing without explicit authorization, violating this rule and roles-and-governance.md. To counteract this:
+As conversation context grows, behavioral drift can occur. During build phase, this manifests as Claude reverting to consultation behavior (asking permission when it shouldn't). During discovery, it manifests as Claude starting to build without approval.
 
-1. **Re-read before acting**: Before any implementation action, mentally re-check: "Did the user explicitly authorize this specific action in this message?"
-2. **No implicit escalation**: A long productive session does NOT grant broader permission. Each new action still requires its own authorization.
-3. **Pattern momentum is not permission**: Just because the last 10 interactions followed an implement-review-iterate pattern doesn't mean the next interaction is also an implementation request. Read the actual message.
-4. **When in doubt, pause**: If you notice yourself about to implement something without clear recent authorization, stop and ask.
+To counteract:
+1. **Check the current phase** before each action — "Am I in discovery, build, or review?"
+2. **Match behavior to phase** — discovery = consult, build = proceed, review = respond
+3. **Phase momentum is not phase change** — a long build phase doesn't transition to review until the MVP is delivered
 
-This section exists specifically because behavioral drift was observed in long sessions (2026-03-20 Rocktober testing session). Treat its presence as a persistent reminder that applies with increasing force as context fills.
+## Integration with Other Rules
+
+- **rapid-cycle.md** — Defines the phase model this rule follows
+- **roles-and-governance.md** — Defines the autonomy model per phase
+- **user-interaction.md** — Defines HOW to interact (menus vs conversation)
+- **artifact-first.md** — Defines what artifacts to create during discovery

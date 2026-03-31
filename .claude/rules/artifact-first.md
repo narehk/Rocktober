@@ -2,45 +2,77 @@
 
 ## Core Principle
 
-**Show me before you build.**
+**Artifacts build context, not gates.**
 
-Any user-visible change, architectural decision, or non-trivial work requires an artifact BEFORE implementation begins. The artifact is reviewed and approved before code gets written.
+During discovery, artifacts give the human something concrete to react to — mockups, process maps, architecture diagrams. During build, artifacts document what was built. During review, artifacts capture feedback.
+
+Artifacts are no longer approval gates that block implementation. They are communication tools that accelerate understanding.
 
 ## Why This Matters
 
 For a visual/auditory learner:
 - Seeing a mockup is worth a thousand words of description
-- Reviewing a plan catches mistakes before they're expensive to fix
-- Artifacts create a shared understanding that prevents misalignment
-- The review step ensures the "no surprises" principle is maintained
+- Process maps reveal complexity that prose hides
+- Visual artifacts create shared understanding faster than text descriptions
+- Feedback on concrete artifacts is higher quality than feedback on abstractions
+
+## Artifact Role Per Phase
+
+| Phase | Artifact Purpose | Approval Required? |
+|-------|-----------------|-------------------|
+| **Discovery** | Build context mass — give the human something to react to | Feedback shapes direction, not formal approval per artifact |
+| **Build** | Document decisions and implementation — reference material | No — Claude creates as needed without gates |
+| **Review** | Capture change orders and feedback | No — artifacts record what was discussed |
+
+## Discovery Phase Artifacts
+
+During discovery, Claude creates visual artifacts to accumulate context mass:
+
+### UI Projects — pencil.dev
+
+Use pencil.dev (via `/sketch` or direct MCP tools) to create:
+- **UI mockups** showing proposed layouts, components, interactions
+- **Design system tokens** (colors, typography, spacing) that carry into the build
+- **Screen flows** showing navigation and user journeys
+
+### All Projects — Process Maps
+
+Use Mermaid diagrams to create:
+- **Technical process maps** showing system interactions and data flow
+- **Workflow diagrams** showing user journeys and decision points
+- **Architecture maps** showing component relationships
+- **State diagrams** for complex lifecycle management
+
+### Discovery Artifact Workflow
+
+```
+Claude creates artifact → Human reacts → Claude refines → Context accumulates
+```
+
+This is collaborative and iterative, but it's NOT a formal approval gate. The human's feedback shapes the direction. When enough context exists, Claude proposes readiness to build.
 
 ## What Qualifies as an Artifact
 
 | Change Type | Artifact Type | Format |
 |-------------|---------------|--------|
-| UI change (layout, component, page) | Visual mockup | HTML prototype, pencil.dev sketch, or ASCII mockup |
-| Architecture decision | Design document | Markdown with Mermaid diagrams |
+| UI change (layout, component, page) | Visual mockup | pencil.dev sketch or HTML prototype |
+| Architecture decision | Process/architecture map | Mermaid diagram |
 | API design | API spec | Endpoint table + request/response examples |
 | Data model change | Schema diagram | Mermaid ER diagram + field descriptions |
 | Workflow change | Flow diagram | Mermaid flowchart or sequence diagram |
-| Multi-step feature | Implementation plan | Numbered steps with scope per step |
+| Multi-step feature | Process map | Mermaid flowchart with decision points |
 | State management | State diagram | Mermaid state diagram + transition table |
 
-## The Artifact Lifecycle
+## Build Phase Artifacts
 
-```
-Create → Present → Review → Approve/Change/Reject → Implement
-```
+During build, Claude creates artifacts as documentation — NOT as approval gates:
 
-1. **Create**: Claude produces the artifact based on discussion
-2. **Present**: Claude shows the artifact with key decisions highlighted
-3. **Review**: You examine it, ask questions, request changes
-4. **Decide**: Approve (proceed), Change (iterate on artifact), or Reject (start over)
-5. **Implement**: Only after approval, begin writing code
+- Implementation notes in work items
+- Architecture decisions recorded as they're made
+- Constraint documentation (ADO Constraint items)
+- Scope drift log
 
-### Iteration is Expected
-
-Most artifacts go through 1-3 rounds of revision. This is normal and desired — it's cheaper to iterate on a mockup than on code.
+These artifacts serve the review phase — the human can trace what was built and why.
 
 ## Artifact Storage
 
@@ -57,14 +89,6 @@ Artifacts are stored in `.claude/artifacts/` organized by feature or topic:
 ```
 
 Naming: `YYYY-MM-DD-<slug>.md`
-
-## Exceptions — When Artifacts Are NOT Required
-
-- **Bug fixes**: Direct fixes to clear bugs (describe the fix, get approval, implement)
-- **Slash command execution**: `/commit`, `/test`, `/verify` — the command IS the intent
-- **Documentation corrections**: Fixing typos, updating outdated docs
-- **Trivial changes**: As defined in `roles-and-governance.md` escalation protocol
-- **Explicit skip**: You say "just do it" or "skip the artifact"
 
 ## Artifact Registry
 
@@ -85,57 +109,42 @@ The `.meta.json` contains structured metadata: type, associated work item, creat
 ## Integration with Tools
 
 ### pencil.dev (via `/sketch`)
-For UI artifacts, pencil.dev is the preferred tool when available. Claude reads design system tokens from pencil.dev and creates visual artifacts that match the project's design language.
+For UI artifacts, pencil.dev is the primary tool. Claude reads design system tokens from pencil.dev and creates visual artifacts that match the project's design language. **Mandatory for UI projects during discovery.**
 
 ### Mermaid Diagrams
-For non-visual artifacts (architecture, data flow, state machines), use Mermaid in markdown. Claude should default to diagrams over walls of text.
+For process maps, architecture, data flow, and state machines. **Mandatory for all projects during discovery.** Claude should default to diagrams over walls of text.
 
 ### HTML Prototypes (via `/prototype`)
 For interactive UI concepts, generate a running HTML/React prototype that can be viewed in the browser.
 
-## Examples
+## When Artifacts Are NOT Required
 
-### Good: Artifact Before Implementation
-
-**You**: "Add a settings page to the app"
-
-**Claude**: "Here's a proposed layout for the settings page:
-
-[Shows mockup with sections: Profile, Notifications, Appearance, Integrations]
-
-Key decisions:
-- Tab navigation vs single scroll (I chose tabs for cleaner organization)
-- Profile section includes avatar upload
-- Dark mode toggle in Appearance
-
-Should I proceed with this layout, or would you like changes?"
-
-### Bad: Implementation Without Artifact
-
-**You**: "Add a settings page to the app"
-
-**Claude**: *[immediately starts writing Settings.jsx]*
-
-### Good: Iterating on Artifact
-
-**You**: "I like the tabs but move Notifications to the top — that's what users change most"
-
-**Claude**: "Updated layout with Notifications as the first tab:
-
-[Shows revised mockup]
-
-Better?"
+- **Bug fixes**: Direct fixes to clear bugs
+- **Slash command execution**: `/commit`, `/test`, `/verify` — the command IS the intent
+- **Documentation corrections**: Fixing typos, updating outdated docs
+- **Build phase implementation**: Claude builds without creating approval artifacts
+- **Trivial changes**: Single-line fixes, formatting
 
 ## Anti-Patterns
 
-**Artifact as afterthought**: Building first, documenting after
-"Here's the settings page I built. Here's the artifact describing it." (backwards)
+**Artifact as approval gate during build**
+During build phase, Claude does NOT create artifacts for approval. Build autonomy means building.
 
-**Over-artifacting**: Creating artifacts for trivial work
-"Before I fix this typo, let me create a mockup..." (just fix it)
+**Over-artifacting during discovery**
+Create artifacts that build understanding. Don't create artifacts for their own sake.
 
-**Artifact without decision points**: Presenting a wall of text with no clear questions
-Show what matters. Highlight decisions. Ask specific questions.
+**Artifact without decision points during discovery**
+Show what matters. Highlight design choices. Give the human something specific to react to.
 
-**Stale artifacts**: Implementing something different from what was approved
-If the implementation diverges from the artifact, update the artifact and get re-approval.
+**Stale artifacts**
+If the build diverges from discovery artifacts, that's scope drift — document it in the drift summary, not by updating old artifacts.
+
+**Skipping visual artifacts during discovery**
+Discovery without visuals is just a text conversation. Use pencil.dev and Mermaid to make ideas concrete.
+
+## Integration with Other Rules
+
+- **rapid-cycle.md** — Defines how artifacts function per phase
+- **visual-workflow.md** — pencil.dev for UI, Mermaid for process maps — both mandatory during discovery
+- **consultation-first.md** — Discovery artifacts support the consultation process
+- **roles-and-governance.md** — Artifacts help the architect make informed decisions during discovery

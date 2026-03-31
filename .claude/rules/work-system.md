@@ -58,15 +58,27 @@ When an item moves backward, a `## Stage History` section is added to the item f
 
 Each `/work` command that changes state has a required source status. Transitions that skip stages are **blocked** unless `--force` is used.
 
+### Standard Mode (Discovery & Review Phases)
+
 | Command | Required Source Status | Prerequisites | ADO Comment? |
 |---------|----------------------|---------------|-------------|
 | `/work start` | ready | Shaping gate + Decomposition gate (PW/UW types) | Yes |
 | `/work review` | in-progress | — | Yes |
-| `/work done` | in-review | Review gate (author quiz artifact exists) | Yes |
+| `/work done` | in-review | Review gate (quiz artifact exists — planned work scope) | Yes |
 | `/work move` | (any) | Target-specific gates apply | Yes |
 | `/work skip` | (any except done) | — | Yes |
 
-### Blocked Transitions (require --force)
+### Build Phase — Relaxed Gates
+
+During the build phase (see `rapid-cycle.md`), Claude moves work items through the lifecycle **automatically**:
+
+- **Status transitions are unrestricted** — Claude moves items forward as work completes
+- **Shaping gate still applies** — requirements must be understood before build begins (enforced at phase transition, not per item)
+- **Decomposition gate still applies** — work must be broken down before build begins
+- **Review gate moves to end** — quiz happens after MVP delivery, scoped to planned work outcomes (not implementation details)
+- **Auto-update**: Claude updates ADO work item status as each component is completed
+
+### Blocked Transitions (require --force) — Standard Mode Only
 
 These transitions skip one or more lifecycle stages. They are **blocked by default** and require `--force "reason"`:
 
@@ -75,16 +87,18 @@ These transitions skip one or more lifecycle stages. They are **blocked by defau
 - `ready` → `done` or `in-review` (must pass through `in-progress`)
 - Any transition that skips a required gate
 
+**Note**: During build phase, Claude is exempt from blocked transitions. Items move freely as implementation progresses.
+
 ## Lifecycle Gates
 
 Gates are hard prerequisites checked by `/work` commands. They **block execution** unless the prerequisite is met or `--force` is used with a mandatory reason.
 
-| Gate | Checked By | Prerequisite | Force Behavior |
-|------|-----------|-------------|----------------|
-| **Status Gate** | All transitions | Source status matches the command's required source | Logs "status override: {from} → {to}: {reason}" |
-| **Shaping Gate** | `/work start` | `## Problem Statement` and `## Acceptance Criteria` sections exist in item file | Logs "shaping skipped: {reason}" |
-| **Decomposition Gate** | `/work start` | If ADO type is Planned Work or Unplanned Work: child Detail items exist in ADO | Logs "decomposition skipped: {reason}" |
-| **Review Gate** | `/work done` | Author quiz artifact exists in `.claude/artifacts/reviews/` (completed OR declined) | Logs "review bypassed: {reason}" |
+| Gate | Checked By | Prerequisite | Build Phase Behavior |
+|------|-----------|-------------|---------------------|
+| **Status Gate** | All transitions | Source status matches the command's required source | **Relaxed** — Claude moves items freely |
+| **Shaping Gate** | Phase transition (discovery → build) | Requirements documented with problem statement and acceptance criteria | **Enforced** — must be met before build begins |
+| **Decomposition Gate** | Phase transition (discovery → build) | If ADO type is Planned Work or Unplanned Work: child Detail items exist in ADO | **Enforced** — must be met before build begins |
+| **Review Gate** | `/work done` | Quiz artifact exists in `.claude/artifacts/reviews/` — scoped to planned work outcomes (not implementation details) | **Moved to end** — quiz happens after MVP delivery and review feedback, required before `/work done` closes the item |
 
 ### --force Override Semantics
 
@@ -98,7 +112,13 @@ Gates are hard prerequisites checked by `/work` commands. They **block execution
 
 ### Gate Philosophy
 
-Gates exist to make skipping **explicit and auditable**, not to prevent it entirely. The escape hatch exists because real work doesn't always follow the ideal path — but every deviation is recorded. The audit trail enables retrospective analysis: if a team frequently forces past the review gate, that's a signal to revisit the workflow.
+Gates exist to make skipping **explicit and auditable**, not to prevent it entirely. During the build phase, gates are relaxed because Claude has full autonomy — but the audit trail is maintained through work item updates and scope drift documentation.
+
+## Constraint Tracking
+
+When Claude encounters constraints during the build phase — technical limitations, dependency issues, design conflicts — they are captured as **ADO Constraint work items** (not comments).
+
+Constraints attach to the relevant Detail item and can escalate to Planned/Unplanned Work if severe. See CONTEXT.md for Constraint state mappings.
 
 ## Blocked Items
 
@@ -360,7 +380,8 @@ Projects can extend this mapping with domain-specific experts.
 
 ## Integration with Other Rules
 
-- **artifact-first.md** — Items in Shaping stage create artifacts before moving to Ready
-- **consultation-first.md** — Moving items between stages requires discussion for non-trivial changes
-- **roles-and-governance.md** — You decide what gets worked on; Claude executes within scope
+- **rapid-cycle.md** — Defines phase-dependent gate behavior. Build phase relaxes status gates; shaping and decomposition gates are enforced at phase transition.
+- **artifact-first.md** — Discovery artifacts build context mass. Build artifacts document decisions.
+- **consultation-first.md** — Phase-dependent. Discovery = discuss. Build = Claude moves items autonomously. Review = human-driven.
+- **roles-and-governance.md** — You shape requirements during discovery; Claude builds with full autonomy; you review output.
 - **setup command** — `/setup` can seed the board with initial epics during project discovery. These arrive in Shaping stage with pre-populated content from the interview.

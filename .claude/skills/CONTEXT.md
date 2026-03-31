@@ -364,6 +364,18 @@ Each ADO **Products** item gets one code wiki. All Projects under that Product c
 - security — Auth, permissions, credential management
 - docs — Documentation and developer experience
 
+## Workflow Mode
+
+- **Mode**: Rapid Cycle (see `.claude/rules/rapid-cycle.md`)
+- **Phases**: Discovery → Decomposition → Build (full autonomy) → Review → Change Orders → repeat
+- **Build Autonomy**: Full — Claude makes all technical decisions during build
+- **Settings Page**: Every MVP includes `/settings` route with tweakable variables
+- **Change Orders**: Batched per review cycle as ADO Change Order items
+- **Constraints**: Captured as ADO Constraint work items during build
+- **Scope Drift**: Documented in work items, summarized at build completion
+- **Quiz**: End-of-phase, planned work outcomes only (not implementation details)
+- **AARs**: Filed after each rapid cycle for framework generalization
+
 ## Current Status
 
-Active Development — building v1 features, proving out WorkSpaceFramework capabilities
+Active Development — building v1 features, proving out Rapid Cycle workflow via WorkSpaceFramework
