@@ -51,6 +51,10 @@ export default {
         return await handleComment(request, env, corsHeaders);
       }
 
+      if (url.pathname === '/comment' && request.method === 'DELETE') {
+        return await handleDeleteComment(request, env, corsHeaders);
+      }
+
       if (url.pathname === '/react' && request.method === 'POST') {
         return await handleReact(request, env, corsHeaders);
       }
@@ -72,7 +76,7 @@ function getCorsHeaders(allowedOrigin, request) {
   const origin = request.headers.get('Origin') || '*';
   return {
     'Access-Control-Allow-Origin': allowedOrigin === '*' ? '*' : origin,
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Max-Age': '86400',
   };
@@ -439,10 +443,15 @@ async function handleVote(request, env, corsHeaders) {
     return json({ error: 'Self-voting is not allowed' }, corsHeaders, 403);
   }
 
-  // 6. Duplicate vote check (server-side — one vote per member per round)
+  // 6. Handle vote change — remove previous vote if exists
   const existingVotes = roundData.votes || [];
-  if (existingVotes.some(v => v.voter === voter)) {
-    return json({ error: 'You have already voted in this round' }, corsHeaders, 409);
+  const previousVoteIdx = existingVotes.findIndex(v => v.voter === voter);
+  if (previousVoteIdx >= 0) {
+    const previousTrackId = existingVotes[previousVoteIdx].trackId;
+    // Decrement old submission's vote count
+    const prevSub = (roundData.submissions || []).find(s => s.trackId === previousTrackId);
+    if (prevSub) prevSub.votes = Math.max(0, (prevSub.votes || 0) - 1);
+    existingVotes.splice(previousVoteIdx, 1);
   }
 
   // 7. Record vote: add to votes array AND increment sub.votes
@@ -495,15 +504,57 @@ async function handleComment(request, env, corsHeaders) {
   if (!roundData) return json({ error: 'Round not found' }, corsHeaders, 404);
 
   if (!roundData.comments) roundData.comments = [];
-  roundData.comments.push({
+  const comment = {
+    id: `c${Date.now()}`,
     author,
     text: text.trim(),
     timestamp: new Date().toISOString(),
-  });
+  };
+  roundData.comments.push(comment);
 
   await writeGitHubFile(repo, filePath, roundData, sha, `Comment: ${author} on round ${day}`, token);
 
-  return json({ success: true, totalComments: roundData.comments.length }, corsHeaders);
+  return json({ success: true, comment, totalComments: roundData.comments.length }, corsHeaders);
+}
+
+// ---------------------
+// DELETE /comment
+// ---------------------
+
+async function handleDeleteComment(request, env, corsHeaders) {
+  const body = await request.json().catch(() => null);
+  if (!body) return json({ error: 'Invalid JSON body' }, corsHeaders, 400);
+
+  const { competition, day, commentId, user } = body;
+  if (!competition || !day || !commentId || !user) {
+    return json({ error: 'Missing required fields' }, corsHeaders, 400);
+  }
+
+  const repo = env.GITHUB_REPO;
+  const token = env.GITHUB_TOKEN;
+
+  const paddedDay = String(day).padStart(2, '0');
+  const filePath = `competitions/${competition}/rounds/day-${paddedDay}.json`;
+  const { content: roundData, sha } = await readGitHubFile(repo, filePath, token);
+
+  if (!roundData) return json({ error: 'Round not found' }, corsHeaders, 404);
+
+  const comments = roundData.comments || [];
+  const idx = comments.findIndex(c => c.id === commentId);
+  if (idx < 0) return json({ error: 'Comment not found' }, corsHeaders, 404);
+
+  // Only the author can delete their own comment
+  // (Admin delete can be added later by checking a config flag)
+  if (comments[idx].author !== user) {
+    return json({ error: 'You can only delete your own comments' }, corsHeaders, 403);
+  }
+
+  comments.splice(idx, 1);
+  roundData.comments = comments;
+
+  await writeGitHubFile(repo, filePath, roundData, sha, `Delete comment by ${user} on round ${day}`, token);
+
+  return json({ success: true }, corsHeaders);
 }
 
 // ---------------------

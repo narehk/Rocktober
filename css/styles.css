@@ -507,6 +507,43 @@ body {
   color: var(--neon-blue);
 }
 
+/* --- Open In Links --- */
+.open-links {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+}
+
+.open-link {
+  font-family: var(--font-pixel);
+  font-size: 0.3rem;
+  text-decoration: none;
+  padding: 0.15rem 0.35rem;
+  border-radius: 2px;
+  letter-spacing: 0.5px;
+  transition: opacity 0.2s;
+  opacity: 0.7;
+}
+
+.open-link:hover {
+  opacity: 1;
+}
+
+.open-spotify {
+  color: #1DB954;
+  border: 1px solid #1DB954;
+}
+
+.open-ytm {
+  color: #FF0000;
+  border: 1px solid #FF0000;
+}
+
+.open-apple {
+  color: #FC3C44;
+  border: 1px solid #FC3C44;
+}
+
 /* --- Preview Play Button --- */
 .play-btn {
   position: absolute;
@@ -1119,6 +1156,27 @@ body {
   color: var(--text-muted);
   white-space: nowrap;
   margin-left: auto;
+}
+
+.comment-delete {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0 0.3rem;
+  opacity: 0;
+  transition: opacity 0.2s, color 0.2s;
+  flex-shrink: 0;
+}
+
+.comment-item:hover .comment-delete {
+  opacity: 0.6;
+}
+
+.comment-delete:hover {
+  opacity: 1 !important;
+  color: var(--neon-pink);
 }
 
 .comment-form {

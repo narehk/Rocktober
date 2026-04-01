@@ -575,7 +575,9 @@ const Rocktober = (() => {
   async function handleVote(trackId, submitter, roundDay) {
     const selfVoteAllowed = config?.selfVoteAllowed ?? false;
     if (!selfVoteAllowed && submitter === currentUser) return;
-    if (getStoredVote(roundDay)) return;
+    // Allow vote changing — if already voted for the same track, ignore
+    const existingVoteId = getStoredVote(roundDay);
+    if (existingVoteId === trackId) return;
 
     localStorage.setItem(voteKey(roundDay), trackId);
     const phase = getCurrentPhase(currentRound, config);
@@ -721,9 +723,7 @@ const Rocktober = (() => {
         if (isOwnSong) {
           voteButton = `<button class="vote-btn own-song" disabled>YOUR SONG</button>`;
         } else if (isVoted) {
-          voteButton = `<button class="vote-btn voted" disabled>VOTED</button>`;
-        } else if (hasVoted) {
-          voteButton = `<button class="vote-btn" disabled data-track="${escapeHTML(sub.trackId || '')}" data-submitter="${escapeHTML(sub.submitter || '')}">VOTE</button>`;
+          voteButton = `<button class="vote-btn voted" data-track="${escapeHTML(sub.trackId || '')}" data-submitter="${escapeHTML(sub.submitter || '')}">VOTED</button>`;
         } else {
           voteButton = `<button class="vote-btn" data-track="${escapeHTML(sub.trackId || '')}" data-submitter="${escapeHTML(sub.submitter || '')}">VOTE</button>`;
         }
@@ -738,6 +738,13 @@ const Rocktober = (() => {
         ? `<button class="play-btn" data-preview="${escapeHTML(previewUrl)}" data-track="${escapeHTML(sub.trackId || '')}" aria-label="Play preview">▶</button>`
         : '';
 
+      const searchQuery = encodeURIComponent(`${sub.title || ''} ${sub.artist || ''}`);
+      const openLinks = `<div class="open-links">
+        <a href="https://open.spotify.com/search/${searchQuery}" target="_blank" rel="noopener" class="open-link open-spotify">Spotify</a>
+        <a href="https://music.youtube.com/search?q=${searchQuery}" target="_blank" rel="noopener" class="open-link open-ytm">YT Music</a>
+        <a href="https://music.apple.com/us/search?term=${searchQuery}" target="_blank" rel="noopener" class="open-link open-apple">Apple</a>
+      </div>`;
+
       return `
         <div class="song-card${phase === 'results' && sub.submitter === currentRound?.winner ? ' winner-highlight' : ''}">
           <div class="album-art-wrap">
@@ -751,6 +758,7 @@ const Rocktober = (() => {
             <div class="song-title">${escapeHTML(sub.title || 'Unknown')}</div>
             <div class="song-artist">${escapeHTML(sub.artist || 'Unknown Artist')}</div>
             <div class="song-submitter">${escapeHTML(sub.submitter || 'Anonymous')}</div>
+            ${openLinks}
             ${voteButton}
             ${voteCount}
             ${buildReactionsHTML(sub)}
@@ -990,11 +998,18 @@ const Rocktober = (() => {
     if (comments.length === 0) {
       list.innerHTML = '<p class="no-comments">No comments yet. Be the first!</p>';
     } else {
-      list.innerHTML = comments.map(c => `
+      list.innerHTML = comments.map(c => {
+        const canDelete = currentUser && c.author === currentUser;
+        const deleteBtn = canDelete
+          ? `<button class="comment-delete" data-id="${escapeHTML(c.id || '')}" aria-label="Delete comment">&times;</button>`
+          : '';
+        return `
         <div class="comment-item">
           <span class="comment-author">${escapeHTML(c.author)}</span>
           <span class="comment-text">${escapeHTML(c.text)}</span>
-        </div>`).join('');
+          ${deleteBtn}
+        </div>`;
+      }).join('');
       list.scrollTop = list.scrollHeight;
     }
 
@@ -1100,6 +1115,33 @@ const Rocktober = (() => {
     }
   }
 
+  async function handleDeleteComment(commentId) {
+    if (!currentUser || !currentRound || !currentSlug) return;
+
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+
+      const res = await fetch(`${WORKER_URL}/comment`, {
+        method: 'DELETE',
+        headers,
+        body: JSON.stringify({
+          competition: currentSlug,
+          day: currentRound.day,
+          commentId,
+          user: currentUser,
+        }),
+      });
+
+      if (res.ok) {
+        currentRound.comments = (currentRound.comments || []).filter(c => c.id !== commentId);
+        renderComments(currentRound);
+      }
+    } catch (err) {
+      console.error('Delete comment error:', err);
+    }
+  }
+
   function initSocialHandlers() {
     // Comment submission
     $('#comment-submit')?.addEventListener('click', () => {
@@ -1112,6 +1154,13 @@ const Rocktober = (() => {
         const text = e.target.value.trim();
         if (text) handleComment(text);
       }
+    });
+
+    // Comment delete via delegation
+    $('#comments-list')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('.comment-delete');
+      if (!btn) return;
+      handleDeleteComment(btn.dataset.id);
     });
 
     // Reaction clicks via delegation on submissions grid
