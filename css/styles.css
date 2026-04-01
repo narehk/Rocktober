@@ -570,6 +570,24 @@ body {
   box-shadow: 0 0 15px rgba(0, 229, 255, 0.4);
 }
 
+.export-btn-spotify {
+  border-color: #1DB954;
+  color: #1DB954;
+}
+
+.export-btn-spotify:hover {
+  background: #1DB954;
+  color: var(--bg-dark);
+  box-shadow: 0 0 15px rgba(29, 185, 84, 0.4);
+}
+
+.export-section {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
 /* --- Vote Button --- */
 .vote-btn {
   font-family: var(--font-pixel);

@@ -73,7 +73,7 @@ const Rocktober = (() => {
   let currentSlug = null;
   let searchTimer = null;
   let submitting = false;
-  let currentProvider = 'spotify'; // Active search provider
+  let currentProvider = 'itunes'; // Active search provider
   let viewingRoundNum = null;   // Which round the user is looking at
   let liveRoundNum = null;      // The actual current round (today's)
   let countdownTimer = null;
@@ -903,37 +903,49 @@ const Rocktober = (() => {
   }
 
   /**
-   * Export the current round's submissions as a Spotify playlist link.
+   * Copy the current round's track list to clipboard.
    */
   function exportPlaylist() {
     if (!currentRound?.submissions) return;
 
-    const trackIds = currentRound.submissions
-      .filter(s => s.trackId)
-      .map(s => s.trackId);
-
-    if (trackIds.length === 0) return;
-
-    // Open Spotify with the track URIs (opens Spotify app or web player)
-    const uris = trackIds.map(id => `spotify:track:${id}`).join(',');
-    // Fallback: copy track IDs to clipboard
-    const spotifyUrl = `https://open.spotify.com/search/${encodeURIComponent(currentRound.theme || 'Rocktober')}`;
-
-    // Create a text list for clipboard
+    const theme = currentRound.theme || 'Rocktober';
     const trackList = currentRound.submissions
       .map(s => `${s.title} - ${s.artist} (${s.submitter})`)
       .join('\n');
 
-    navigator.clipboard.writeText(trackList).then(() => {
+    const fullText = `${theme}\n${'—'.repeat(30)}\n${trackList}`;
+
+    navigator.clipboard.writeText(fullText).then(() => {
       const btn = $('#export-playlist');
       if (btn) {
-        btn.textContent = 'COPIED TO CLIPBOARD!';
-        setTimeout(() => { btn.textContent = 'EXPORT PLAYLIST'; }, 3000);
+        btn.textContent = 'COPIED!';
+        setTimeout(() => { btn.textContent = 'COPY PLAYLIST'; }, 3000);
       }
-    }).catch(() => {
-      // Fallback: open in new window
-      window.open(spotifyUrl, '_blank');
-    });
+    }).catch(() => {});
+  }
+
+  /**
+   * Open all tracks in Spotify search (one tab per track).
+   * For single tracks, opens directly. For multiple, opens the first
+   * and copies the rest to clipboard.
+   */
+  function exportToSpotify() {
+    if (!currentRound?.submissions) return;
+
+    const subs = currentRound.submissions.filter(s => s.title && s.artist);
+    if (subs.length === 0) return;
+
+    // Open first track in Spotify search
+    const first = subs[0];
+    window.open(`https://open.spotify.com/search/${encodeURIComponent(`${first.title} ${first.artist}`)}`, '_blank');
+
+    if (subs.length > 1) {
+      const btn = $('#export-spotify');
+      if (btn) {
+        btn.textContent = `OPENED 1/${subs.length}`;
+        setTimeout(() => { btn.textContent = 'OPEN IN SPOTIFY'; }, 3000);
+      }
+    }
   }
 
   function initPlayback() {
@@ -945,8 +957,9 @@ const Rocktober = (() => {
       togglePreview(btn.dataset.preview, btn.dataset.track);
     });
 
-    // Export button
+    // Export buttons
     $('#export-playlist')?.addEventListener('click', exportPlaylist);
+    $('#export-spotify')?.addEventListener('click', exportToSpotify);
   }
 
   /**
@@ -1165,17 +1178,10 @@ const Rocktober = (() => {
   }
 
   async function performSearch(query) {
-    // Only Spotify is implemented; other providers show "coming soon"
-    if (currentProvider !== 'spotify') {
-      showSearchStatus(`${currentProvider.toUpperCase()} search coming soon. Use Spotify for now.`);
-      dom.searchResults?.classList.add('hidden');
-      return;
-    }
-
     showSearchStatus('Searching...');
 
     try {
-      const res = await fetch(`${WORKER_URL}/search?q=${encodeURIComponent(query)}&provider=${currentProvider}`);
+      const res = await fetch(`${WORKER_URL}/search?q=${encodeURIComponent(query)}`);
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || `Search failed (${res.status})`);

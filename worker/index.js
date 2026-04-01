@@ -234,36 +234,7 @@ async function handleAuth(request, env, corsHeaders) {
 }
 
 // ---------------------
-// Spotify Auth (Client Credentials)
-// ---------------------
-
-/**
- * Get a Spotify access token using client credentials flow.
- * No user account needed — server-to-server auth.
- */
-async function getSpotifyToken(env) {
-  const credentials = btoa(`${env.SPOTIFY_CLIENT_ID}:${env.SPOTIFY_CLIENT_SECRET}`);
-
-  const res = await fetch('https://accounts.spotify.com/api/token', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Basic ${credentials}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: 'grant_type=client_credentials',
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Spotify auth failed (${res.status}): ${text}`);
-  }
-
-  const data = await res.json();
-  return data.access_token;
-}
-
-// ---------------------
-// GET /search
+// GET /search (iTunes Search API — free, no auth)
 // ---------------------
 
 async function handleSearch(url, env, corsHeaders) {
@@ -272,36 +243,31 @@ async function handleSearch(url, env, corsHeaders) {
     return json({ error: 'Missing query parameter "q"' }, corsHeaders, 400);
   }
 
-  const token = await getSpotifyToken(env);
+  const itunesUrl = new URL('https://itunes.apple.com/search');
+  itunesUrl.searchParams.set('term', query.trim());
+  itunesUrl.searchParams.set('media', 'music');
+  itunesUrl.searchParams.set('entity', 'song');
+  itunesUrl.searchParams.set('limit', '10');
+  itunesUrl.searchParams.set('country', 'US');
 
-  const spotifyUrl = new URL('https://api.spotify.com/v1/search');
-  spotifyUrl.searchParams.set('q', query.trim());
-  spotifyUrl.searchParams.set('type', 'track');
-  spotifyUrl.searchParams.set('limit', '10');
-  spotifyUrl.searchParams.set('market', 'US');
-
-  const res = await fetch(spotifyUrl.toString(), {
-    headers: { 'Authorization': `Bearer ${token}` },
-  });
+  const res = await fetch(itunesUrl.toString());
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Spotify search failed (${res.status}): ${text}`);
+    throw new Error(`Search failed (${res.status}): ${text}`);
   }
 
   const data = await res.json();
 
-  // Filter to only the fields the frontend needs
-  const tracks = (data.tracks?.items || []).map(track => ({
-    trackId: track.id,
-    title: track.name,
-    artist: track.artists?.map(a => a.name).join(', ') || 'Unknown Artist',
-    album: track.album?.name || '',
-    albumArt: track.album?.images?.[1]?.url  // 300x300
-           || track.album?.images?.[0]?.url  // fallback to largest
-           || '',
-    duration: track.duration_ms,
-    previewUrl: track.preview_url || null,
+  const tracks = (data.results || []).map(track => ({
+    trackId: String(track.trackId),
+    title: track.trackName || 'Unknown',
+    artist: track.artistName || 'Unknown Artist',
+    album: track.collectionName || '',
+    albumArt: (track.artworkUrl100 || '').replace('100x100', '300x300'),
+    duration: track.trackTimeMillis || 0,
+    previewUrl: track.previewUrl || null,
+    spotifySearch: `https://open.spotify.com/search/${encodeURIComponent(`${track.trackName} ${track.artistName}`)}`,
   }));
 
   return json({ tracks }, corsHeaders);
