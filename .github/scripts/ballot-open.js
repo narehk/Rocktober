@@ -20,9 +20,10 @@ const {
   isWithinCompetition,
   formatDate,
   log,
+  sendTeamsNotification,
 } = require('./utils');
 
-function processCompetition(slug, today) {
+async function processCompetition(slug, today) {
   log('info', `Processing competition: ${slug}`);
 
   const config = loadConfig(slug);
@@ -76,10 +77,16 @@ function processCompetition(slug, today) {
   writeJSON(rPath, round);
   log('info', `Ballot opened for round ${roundNumber}. Phase changed from "submission" to "voting".`, { slug, round: roundNumber, submissions: round.submissions.length });
 
+  const config = loadConfig(slug);
+  await sendTeamsNotification(
+    `🗳️ Voting Open — Round ${roundNumber}`,
+    `**${config?.name || slug}** — ${round.submissions.length} songs submitted. Cast your vote!`
+  );
+
   return true;
 }
 
-function main() {
+async function main() {
   const today = new Date();
   log('info', `Ballot Open script started. Date: ${formatDate(today)}`);
 

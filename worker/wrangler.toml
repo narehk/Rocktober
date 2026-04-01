@@ -7,6 +7,10 @@ compatibility_date = "2024-09-01"
 #   SPOTIFY_CLIENT_SECRET
 #   GITHUB_TOKEN
 #   GITHUB_REPO  (e.g., "username/Rocktober")
+#   AUTH_SECRET   (HMAC signing key for session tokens)
+#   INVITE_CODES  (optional JSON: {"CODE1":"Kerry","CODE2":"Marcus",...}
+#                   or per-competition: {"comp-slug":{"CODE1":"Kerry",...}}
+#                   If not set, falls back to member name as code)
 
 [vars]
 CORS_ORIGIN = "*"

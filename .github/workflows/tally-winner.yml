@@ -23,6 +23,8 @@ jobs:
 
       - name: Run tally winner script
         run: node .github/scripts/tally-winner.js
+        env:
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
 
       - name: Commit and push changes
         run: |

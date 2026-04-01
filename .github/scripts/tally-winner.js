@@ -26,6 +26,7 @@ const {
   isWithinCompetition,
   formatDate,
   log,
+  sendTeamsNotification,
 } = require('./utils');
 
 /**
@@ -109,7 +110,7 @@ function recomputeLeaderboard(slug, config) {
   };
 }
 
-function processCompetition(slug, today) {
+async function processCompetition(slug, today) {
   log('info', `Processing competition: ${slug}`);
 
   const config = loadConfig(slug);
@@ -176,10 +177,21 @@ function processCompetition(slug, today) {
     });
   }
 
+  // Send Teams notification with winner and leaderboard
+  const winnerSub = (round.submissions || []).find(s => s.submitter === winner);
+  const leaderLine = leaderboard?.standings?.slice(0, 3)
+    .map((s, i) => `${i + 1}. ${s.name} (${s.wins}W)`)
+    .join(' | ') || '';
+
+  await sendTeamsNotification(
+    `🏆 Round ${roundNumber} Winner: ${winner || 'No winner'}`,
+    `**${config.name}** — ${winner ? `**${winner}** wins with "${winnerSub?.title || '?'}" by ${winnerSub?.artist || '?'}` : 'No votes cast.'}\n\n**Standings:** ${leaderLine}`
+  );
+
   return true;
 }
 
-function main() {
+async function main() {
   const today = new Date();
   log('info', `Tally Winner script started. Date: ${formatDate(today)}`);
 

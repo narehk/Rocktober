@@ -23,6 +23,8 @@ jobs:
 
       - name: Run theme reveal script
         run: node .github/scripts/theme-reveal.js
+        env:
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
 
       - name: Commit and push changes
         run: |

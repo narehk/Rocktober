@@ -20,69 +20,155 @@
       <label class="pixel-text user-select-label">PLAYING AS:</label>
       <select id="current-user" class="user-dropdown"></select>
     </div>
+    <!-- Auth: Login prompt (shown when not authenticated) -->
+    <div class="auth-bar hidden" id="auth-bar">
+      <div class="auth-login">
+        <input type="text" id="invite-code" class="invite-input" placeholder="Enter invite code..." maxlength="20" autocomplete="off">
+        <button class="auth-btn pixel-text" id="auth-submit">JOIN</button>
+      </div>
+      <p class="auth-status hidden" id="auth-status"></p>
+    </div>
+    <!-- Auth: Logged-in display -->
+    <div class="auth-user hidden" id="auth-user">
+      <span class="pixel-text auth-name" id="auth-name"></span>
+      <button class="auth-logout-btn pixel-text" id="auth-logout">LOGOUT</button>
+    </div>
   </header>
 
-  <div class="app-layout">
-    <main class="main-content">
-      <!-- Round Phase Display -->
-      <section class="round-section" id="round-display">
-        <div class="loading-state" id="loading">
-          <p class="pixel-text blink">LOADING...</p>
-        </div>
+  <!-- Competition Picker Screen -->
+  <div class="picker-screen" id="picker-screen">
+    <div class="picker-container">
+      <h2 class="pixel-text picker-title neon-blue-text">SELECT COMPETITION</h2>
+      <p class="picker-subtitle">Choose a playlist battle to enter</p>
+      <div class="picker-loading" id="picker-loading">
+        <p class="pixel-text blink">LOADING...</p>
+      </div>
+      <div class="picker-grid" id="picker-grid"></div>
+    </div>
+  </div>
 
-        <div class="error-state hidden" id="error">
-          <h2 class="pixel-text glitch">GAME OVER</h2>
-          <p class="error-message" id="error-message">Could not load competition data.</p>
-        </div>
+  <!-- Competition Screen (existing app wrapped) -->
+  <div class="competition-screen hidden" id="competition-screen">
+    <div class="comp-nav">
+      <button class="back-btn pixel-text" id="back-to-picker">&larr; ALL COMPETITIONS</button>
+    </div>
 
-        <!-- Theme Display -->
-        <div class="theme-display hidden" id="theme-display">
-          <div class="round-badge" id="round-badge">ROUND 01</div>
-          <h2 class="theme-title neon-text" id="theme-title"></h2>
-          <p class="theme-picker" id="theme-picker"></p>
-          <div class="phase-badge" id="phase-badge"></div>
-        </div>
-
-        <!-- Song Search (submission phase only) -->
-        <div class="song-search hidden" id="song-search">
-          <h3 class="pixel-text search-heading">SEARCH & SUBMIT</h3>
-          <div class="search-bar">
-            <input type="text" id="search-input" class="search-input"
-                   placeholder="Search for a song..." autocomplete="off">
-            <span class="search-icon" aria-hidden="true">&#9835;</span>
+    <div class="app-layout">
+      <main class="main-content">
+        <!-- Round Phase Display -->
+        <section class="round-section" id="round-display">
+          <div class="loading-state" id="loading">
+            <p class="pixel-text blink">LOADING...</p>
           </div>
-          <div class="search-status hidden" id="search-status"></div>
-          <div class="search-results hidden" id="search-results"></div>
-        </div>
 
-        <!-- Submissions Grid -->
-        <div class="submissions-grid hidden" id="submissions-grid"></div>
+          <div class="error-state hidden" id="error">
+            <h2 class="pixel-text glitch">GAME OVER</h2>
+            <p class="error-message" id="error-message">Could not load competition data.</p>
+          </div>
 
-        <!-- Winner Display -->
-        <div class="winner-display hidden" id="winner-display">
-          <h3 class="pixel-text">WINNER</h3>
-          <div class="winner-card" id="winner-card"></div>
-        </div>
-      </section>
-    </main>
+          <!-- Theme Display -->
+          <div class="theme-display hidden" id="theme-display">
+            <div class="round-nav">
+              <button class="round-nav-btn" id="prev-round" aria-label="Previous round">&larr;</button>
+              <div class="round-badge" id="round-badge">ROUND 01</div>
+              <button class="round-nav-btn" id="next-round" aria-label="Next round">&rarr;</button>
+            </div>
+            <h2 class="theme-title neon-text" id="theme-title"></h2>
+            <p class="theme-picker" id="theme-picker"></p>
+            <div class="phase-info">
+              <div class="phase-badge" id="phase-badge"></div>
+              <div class="phase-countdown hidden" id="phase-countdown"></div>
+            </div>
+          </div>
 
-    <aside class="sidebar">
-      <!-- Leaderboard -->
-      <section class="leaderboard-section">
-        <h2 class="pixel-text sidebar-title">LEADERBOARD</h2>
-        <div class="leaderboard" id="leaderboard">
-          <p class="no-data">No standings yet.</p>
-        </div>
-      </section>
+          <!-- Song Search (submission phase only) -->
+          <div class="song-search hidden" id="song-search">
+            <h3 class="pixel-text search-heading">SEARCH & SUBMIT</h3>
+            <div class="provider-tabs" id="provider-tabs">
+              <button class="provider-tab active" data-provider="spotify">SPOTIFY</button>
+              <button class="provider-tab" data-provider="youtube">YOUTUBE</button>
+              <button class="provider-tab" data-provider="apple">APPLE</button>
+              <button class="provider-tab" data-provider="soundcloud">SOUNDCLOUD</button>
+            </div>
+            <div class="search-bar">
+              <input type="text" id="search-input" class="search-input"
+                     placeholder="Search for a song..." autocomplete="off">
+              <span class="search-icon" aria-hidden="true">&#9835;</span>
+            </div>
+            <div class="search-status hidden" id="search-status"></div>
+            <div class="search-results hidden" id="search-results"></div>
+          </div>
 
-      <!-- Competition Info -->
-      <section class="comp-info-section">
-        <h2 class="pixel-text sidebar-title">INFO</h2>
-        <div class="comp-info" id="comp-info">
-          <p class="no-data">Loading...</p>
-        </div>
-      </section>
-    </aside>
+          <!-- Submissions Grid -->
+          <div class="submissions-grid hidden" id="submissions-grid"></div>
+
+          <!-- Playlist Export -->
+          <div class="export-section hidden" id="export-section">
+            <button class="export-btn" id="export-playlist">EXPORT PLAYLIST</button>
+          </div>
+
+          <!-- Winner Display -->
+          <div class="winner-display hidden" id="winner-display">
+            <h3 class="pixel-text">WINNER</h3>
+            <div class="winner-card" id="winner-card"></div>
+          </div>
+
+          <!-- Comments Section -->
+          <div class="comments-section hidden" id="comments-section">
+            <h3 class="pixel-text comments-heading">COMMENTS</h3>
+            <div class="comments-list" id="comments-list"></div>
+            <div class="comment-form hidden" id="comment-form">
+              <input type="text" id="comment-input" class="comment-input" placeholder="Drop a comment..." maxlength="280" autocomplete="off">
+              <button class="comment-submit pixel-text" id="comment-submit">SEND</button>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <aside class="sidebar">
+        <!-- Leaderboard -->
+        <section class="leaderboard-section">
+          <h2 class="pixel-text sidebar-title">LEADERBOARD</h2>
+          <div class="leaderboard" id="leaderboard">
+            <p class="no-data">No standings yet.</p>
+          </div>
+        </section>
+
+        <!-- Competition Info -->
+        <section class="comp-info-section">
+          <h2 class="pixel-text sidebar-title">INFO</h2>
+          <div class="comp-info" id="comp-info">
+            <p class="no-data">Loading...</p>
+          </div>
+        </section>
+
+        <!-- Settings Panel -->
+        <section class="settings-section hidden" id="settings-section">
+          <h2 class="pixel-text sidebar-title">SETTINGS</h2>
+          <div class="settings-panel" id="settings-panel">
+            <div class="setting-group">
+              <label class="setting-label">DISPLAY NAME</label>
+              <span class="setting-value" id="setting-display-name">—</span>
+            </div>
+            <div class="setting-group">
+              <label class="setting-label">THEME</label>
+              <select class="setting-select" id="setting-theme">
+                <option value="neon">NEON (DEFAULT)</option>
+                <option value="classic">CLASSIC ARCADE</option>
+                <option value="minimal">MINIMAL</option>
+              </select>
+            </div>
+            <div class="setting-group">
+              <label class="setting-label">SOUND EFFECTS</label>
+              <label class="setting-toggle">
+                <input type="checkbox" id="setting-sfx" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </div>
   </div>
 
   <footer class="site-footer">

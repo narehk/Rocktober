@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "competitions": [
+    {
+      "slug": "test-2026",
+      "name": "Test Competition 2026",
+      "startDate": "2026-03-24",
+      "endDate": "2026-03-28",
+      "status": "active",
+      "memberCount": 5,
+      "totalRounds": 5,
+      "description": "A test competition for Rocktober 2"
+    },
+    {
+      "slug": "rocktober-2024",
+      "name": "Rocktober 2024",
+      "startDate": "2024-10-01",
+      "endDate": "2024-10-23",
+      "status": "completed",
+      "memberCount": 5,
+      "totalRounds": 23,
+      "description": "The original Rocktober playlist battle"
+    }
+  ]
+}

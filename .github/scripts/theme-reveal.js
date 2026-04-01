@@ -24,9 +24,10 @@ const {
   getThemePicker,
   formatDate,
   log,
+  sendTeamsNotification,
 } = require('./utils');
 
-function processCompetition(slug, today) {
+async function processCompetition(slug, today) {
   log('info', `Processing competition: ${slug}`);
 
   const config = loadConfig(slug);
@@ -98,10 +99,16 @@ function processCompetition(slug, today) {
   writeJSON(rPath, roundData);
   log('info', `Theme revealed for round ${roundNumber}: "${theme}" (picker: ${themePicker}). Phase set to "submission".`, { slug, round: roundNumber, theme, themePicker });
 
+  // Send Teams notification
+  await sendTeamsNotification(
+    `🎸 Round ${roundNumber}: ${theme}`,
+    `**${config.name}** — Today's theme is **${theme}** (picked by ${themePicker}). Submissions are open!`
+  );
+
   return true;
 }
 
-function main() {
+async function main() {
   const today = new Date();
   log('info', `Theme Reveal script started. Date: ${formatDate(today)}`);
 

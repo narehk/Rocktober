@@ -23,6 +23,8 @@ jobs:
 
       - name: Run ballot open script
         run: node .github/scripts/ballot-open.js
+        env:
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
 
       - name: Commit and push changes
         run: |

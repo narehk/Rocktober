@@ -34,12 +34,24 @@ export default {
         return handleSearch(url, env, corsHeaders);
       }
 
+      if (url.pathname === '/auth' && request.method === 'POST') {
+        return handleAuth(request, env, corsHeaders);
+      }
+
       if (url.pathname === '/submit' && request.method === 'POST') {
         return handleSubmit(request, env, corsHeaders);
       }
 
       if (url.pathname === '/vote' && request.method === 'POST') {
         return handleVote(request, env, corsHeaders);
+      }
+
+      if (url.pathname === '/comment' && request.method === 'POST') {
+        return handleComment(request, env, corsHeaders);
+      }
+
+      if (url.pathname === '/react' && request.method === 'POST') {
+        return handleReact(request, env, corsHeaders);
       }
 
       return json({ error: 'Not found' }, corsHeaders, 404);
@@ -60,7 +72,7 @@ function getCorsHeaders(allowedOrigin, request) {
   return {
     'Access-Control-Allow-Origin': allowedOrigin === '*' ? '*' : origin,
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Max-Age': '86400',
   };
 }
@@ -74,6 +86,150 @@ function json(data, corsHeaders, status = 200) {
     status,
     headers: { 'Content-Type': 'application/json', ...corsHeaders },
   });
+}
+
+// ---------------------
+// Auth & Session Tokens
+// ---------------------
+
+/**
+ * Generate a simple HMAC-based session token.
+ * Token = base64(name:competition:timestamp:hmac)
+ */
+async function generateToken(name, competition, secret) {
+  const payload = `${name}:${competition}:${Date.now()}`;
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(payload));
+  const sigHex = [...new Uint8Array(sig)].map(b => b.toString(16).padStart(2, '0')).join('');
+  return btoa(`${payload}:${sigHex}`);
+}
+
+/**
+ * Validate a session token. Returns the member name or null.
+ */
+async function validateToken(token, secret) {
+  try {
+    const decoded = atob(token);
+    const parts = decoded.split(':');
+    if (parts.length < 4) return null;
+    const name = parts[0];
+    const competition = parts[1];
+    const timestamp = parts[2];
+    const providedSig = parts.slice(3).join(':');
+
+    // Token expires after 30 days
+    const age = Date.now() - parseInt(timestamp, 10);
+    if (age > 30 * 24 * 60 * 60 * 1000) return null;
+
+    // Verify HMAC
+    const payload = `${name}:${competition}:${timestamp}`;
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+    const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(payload));
+    const expectedSig = [...new Uint8Array(sig)].map(b => b.toString(16).padStart(2, '0')).join('');
+
+    if (providedSig !== expectedSig) return null;
+    return { name, competition };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Parse invite codes from the INVITE_CODES secret.
+ * Format: JSON object { "CODE1": "Kerry", "CODE2": "Marcus", ... }
+ * Or per-competition: { "comp-slug": { "CODE1": "Kerry" }, ... }
+ */
+function parseInviteCodes(env) {
+  if (!env.INVITE_CODES) return null;
+  try {
+    return JSON.parse(env.INVITE_CODES);
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------
+// POST /auth
+// ---------------------
+
+async function handleAuth(request, env, corsHeaders) {
+  const body = await request.json().catch(() => null);
+  if (!body) {
+    return json({ error: 'Invalid JSON body' }, corsHeaders, 400);
+  }
+
+  const { competition, code } = body;
+  if (!competition || !code) {
+    return json({ error: 'Missing required fields: competition, code' }, corsHeaders, 400);
+  }
+
+  const codes = parseInviteCodes(env);
+  if (!codes) {
+    // No invite codes configured — fall back to open access
+    // Validate that the code matches a member name (case-insensitive)
+    const repo = env.GITHUB_REPO;
+    const token = env.GITHUB_TOKEN;
+    const configPath = `competitions/${competition}/config.json`;
+    const { content: configData } = await readGitHubFile(repo, configPath, token);
+
+    if (!configData) {
+      return json({ error: 'Competition not found' }, corsHeaders, 404);
+    }
+
+    const memberNames = (configData.members || []).map(m => m.name);
+    const matchedName = memberNames.find(
+      n => n.toUpperCase() === code.toUpperCase()
+    );
+
+    if (!matchedName) {
+      return json({ error: 'Invalid code. Enter your member name to join.' }, corsHeaders, 403);
+    }
+
+    const secret = env.AUTH_SECRET || 'rocktober-default-secret';
+    const sessionToken = await generateToken(matchedName, competition, secret);
+
+    return json({
+      name: matchedName,
+      token: sessionToken,
+      competition,
+    }, corsHeaders);
+  }
+
+  // Invite codes configured — look up by competition then by code
+  let codeMap = codes;
+  if (codes[competition] && typeof codes[competition] === 'object') {
+    codeMap = codes[competition];
+  }
+
+  const normalizedCode = code.toUpperCase();
+  const memberName = codeMap[normalizedCode];
+
+  if (!memberName) {
+    return json({ error: 'Invalid invite code' }, corsHeaders, 403);
+  }
+
+  const secret = env.AUTH_SECRET || 'rocktober-default-secret';
+  const sessionToken = await generateToken(memberName, competition, secret);
+
+  return json({
+    name: memberName,
+    token: sessionToken,
+    competition,
+  }, corsHeaders);
 }
 
 // ---------------------
@@ -343,6 +499,84 @@ async function handleVote(request, env, corsHeaders) {
     votedFor: { submitter: targetSub.submitter, title: targetSub.title },
     totalVotes: existingVotes.length,
   }, corsHeaders);
+}
+
+// ---------------------
+// POST /comment
+// ---------------------
+
+async function handleComment(request, env, corsHeaders) {
+  const body = await request.json().catch(() => null);
+  if (!body) return json({ error: 'Invalid JSON body' }, corsHeaders, 400);
+
+  const { competition, day, author, text } = body;
+  if (!competition || !day || !author || !text) {
+    return json({ error: 'Missing required fields: competition, day, author, text' }, corsHeaders, 400);
+  }
+
+  if (text.length > 280) {
+    return json({ error: 'Comment too long (max 280 characters)' }, corsHeaders, 400);
+  }
+
+  const repo = env.GITHUB_REPO;
+  const token = env.GITHUB_TOKEN;
+
+  const paddedDay = String(day).padStart(2, '0');
+  const filePath = `competitions/${competition}/rounds/day-${paddedDay}.json`;
+  const { content: roundData, sha } = await readGitHubFile(repo, filePath, token);
+
+  if (!roundData) return json({ error: 'Round not found' }, corsHeaders, 404);
+
+  if (!roundData.comments) roundData.comments = [];
+  roundData.comments.push({
+    author,
+    text: text.trim(),
+    timestamp: new Date().toISOString(),
+  });
+
+  await writeGitHubFile(repo, filePath, roundData, sha, `Comment: ${author} on round ${day}`, token);
+
+  return json({ success: true, totalComments: roundData.comments.length }, corsHeaders);
+}
+
+// ---------------------
+// POST /react
+// ---------------------
+
+async function handleReact(request, env, corsHeaders) {
+  const body = await request.json().catch(() => null);
+  if (!body) return json({ error: 'Invalid JSON body' }, corsHeaders, 400);
+
+  const { competition, day, user, trackId, emoji } = body;
+  if (!competition || !day || !user || !trackId || !emoji) {
+    return json({ error: 'Missing required fields' }, corsHeaders, 400);
+  }
+
+  const repo = env.GITHUB_REPO;
+  const token = env.GITHUB_TOKEN;
+
+  const paddedDay = String(day).padStart(2, '0');
+  const filePath = `competitions/${competition}/rounds/day-${paddedDay}.json`;
+  const { content: roundData, sha } = await readGitHubFile(repo, filePath, token);
+
+  if (!roundData) return json({ error: 'Round not found' }, corsHeaders, 404);
+
+  const sub = (roundData.submissions || []).find(s => s.trackId === trackId);
+  if (!sub) return json({ error: 'Submission not found' }, corsHeaders, 404);
+
+  if (!sub.reactions) sub.reactions = {};
+  if (!sub.reactions[emoji]) sub.reactions[emoji] = [];
+
+  const idx = sub.reactions[emoji].indexOf(user);
+  if (idx >= 0) {
+    sub.reactions[emoji].splice(idx, 1); // Toggle off
+  } else {
+    sub.reactions[emoji].push(user); // Toggle on
+  }
+
+  await writeGitHubFile(repo, filePath, roundData, sha, `React: ${user} ${emoji} on ${sub.title}`, token);
+
+  return json({ success: true, reactions: sub.reactions }, corsHeaders);
 }
 
 // ---------------------

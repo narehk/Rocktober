@@ -154,6 +154,83 @@ function log(level, message, data) {
   }
 }
 
+/**
+ * Send a Teams webhook notification (Adaptive Card format).
+ * Reads TEAMS_WEBHOOK_URL from environment. No-op if not set.
+ */
+async function sendTeamsNotification(title, body, color = '0078D7') {
+  const webhookUrl = process.env.TEAMS_WEBHOOK_URL;
+  if (!webhookUrl) {
+    log('info', 'TEAMS_WEBHOOK_URL not set — skipping notification.');
+    return;
+  }
+
+  const card = {
+    type: 'message',
+    attachments: [{
+      contentType: 'application/vnd.microsoft.card.adaptive',
+      content: {
+        '$schema': 'http://adaptivecards.io/schemas/adaptive-card.json',
+        type: 'AdaptiveCard',
+        version: '1.4',
+        body: [
+          {
+            type: 'TextBlock',
+            text: title,
+            weight: 'Bolder',
+            size: 'Medium',
+            color: 'Accent',
+          },
+          {
+            type: 'TextBlock',
+            text: body,
+            wrap: true,
+          },
+        ],
+      },
+    }],
+  };
+
+  try {
+    const https = require('https');
+    const url = new URL(webhookUrl);
+    const data = JSON.stringify(card);
+
+    await new Promise((resolve, reject) => {
+      const req = https.request({
+        hostname: url.hostname,
+        port: 443,
+        path: url.pathname + url.search,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(data),
+        },
+      }, (res) => {
+        let body = '';
+        res.on('data', chunk => body += chunk);
+        res.on('end', () => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            log('info', 'Teams notification sent successfully.', { title });
+            resolve();
+          } else {
+            log('warn', `Teams notification failed: ${res.statusCode} ${body}`, { title });
+            resolve(); // Don't fail the script for notification errors
+          }
+        });
+      });
+      req.on('error', (err) => {
+        log('warn', `Teams notification error: ${err.message}`, { title });
+        resolve();
+      });
+      req.write(data);
+      req.end();
+    });
+  } catch (err) {
+    log('warn', `Teams notification exception: ${err.message}`, { title });
+  }
+}
+
 module.exports = {
   COMPETITIONS_DIR,
   getDayOfWeek,
@@ -170,4 +247,5 @@ module.exports = {
   isWithinCompetition,
   getThemePicker,
   log,
+  sendTeamsNotification,
 };
