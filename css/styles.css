@@ -516,13 +516,13 @@ body {
 
 .open-link {
   font-family: var(--font-pixel);
-  font-size: 0.3rem;
+  font-size: 0.45rem;
   text-decoration: none;
-  padding: 0.15rem 0.35rem;
+  padding: 0.2rem 0.45rem;
   border-radius: 2px;
   letter-spacing: 0.5px;
-  transition: opacity 0.2s;
-  opacity: 0.7;
+  transition: opacity 0.2s, background 0.2s;
+  opacity: 0.8;
 }
 
 .open-link:hover {
@@ -1165,17 +1165,13 @@ body {
   font-size: 1rem;
   cursor: pointer;
   padding: 0 0.3rem;
-  opacity: 0;
+  opacity: 0.4;
   transition: opacity 0.2s, color 0.2s;
   flex-shrink: 0;
 }
 
-.comment-item:hover .comment-delete {
-  opacity: 0.6;
-}
-
 .comment-delete:hover {
-  opacity: 1 !important;
+  opacity: 1;
   color: var(--neon-pink);
 }
 

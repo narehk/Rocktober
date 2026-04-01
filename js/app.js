@@ -164,10 +164,18 @@ const Rocktober = (() => {
     return diffDays + 1;
   }
 
+  let cachedMaxRound = {};  // slug -> highest known round number
+
   async function findLatestRound(slug, maxRound) {
-    for (let i = maxRound; i >= 1; i--) {
+    // Use cached max if we've already probed this competition
+    const cachedMax = cachedMaxRound[slug];
+    const startFrom = cachedMax || maxRound;
+
+    for (let i = startFrom; i >= 1; i--) {
       try {
-        return { round: await loadRound(slug, i), num: i };
+        const round = await loadRound(slug, i);
+        cachedMaxRound[slug] = i;  // Cache the highest found
+        return { round, num: i };
       } catch { /* keep searching */ }
     }
     return null;
@@ -1324,15 +1332,23 @@ const Rocktober = (() => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Submission failed');
 
-      if (data.submission) {
-        const subs = currentRound.submissions || [];
-        const idx = subs.findIndex(s => s.submitter === currentUser);
-        if (idx >= 0) {
-          subs[idx] = data.submission;
-        } else {
-          subs.push(data.submission);
+      // Re-fetch the round from source after successful submission
+      // to avoid stale local state causing duplicate cards
+      try {
+        const freshRound = await loadRound(currentSlug, currentRound.day);
+        currentRound = freshRound;
+      } catch {
+        // Fallback: update local state manually
+        if (data.submission) {
+          const subs = currentRound.submissions || [];
+          const idx = subs.findIndex(s => s.submitter === currentUser);
+          if (idx >= 0) {
+            subs[idx] = data.submission;
+          } else {
+            subs.push(data.submission);
+          }
+          currentRound.submissions = subs;
         }
-        currentRound.submissions = subs;
       }
 
       const phase = getCurrentPhase(currentRound, config);
