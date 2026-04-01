@@ -96,8 +96,8 @@ const Rocktober = (() => {
     // Fallback to query param: ?competition=test-2026
     const search = new URLSearchParams(window.location.search);
     if (search.has('competition')) return search.get('competition');
-    // Check localStorage for last-used competition
-    return localStorage.getItem('rocktober-last-competition') || null;
+    // No auto-resume — always show picker unless URL specifies a competition
+    return null;
   }
 
   /**
