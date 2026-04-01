@@ -30,28 +30,29 @@ export default {
         return json({ status: 'ok', timestamp: new Date().toISOString() }, corsHeaders);
       }
 
+
       if (url.pathname === '/search' && request.method === 'GET') {
-        return handleSearch(url, env, corsHeaders);
+        return await handleSearch(url, env, corsHeaders);
       }
 
       if (url.pathname === '/auth' && request.method === 'POST') {
-        return handleAuth(request, env, corsHeaders);
+        return await handleAuth(request, env, corsHeaders);
       }
 
       if (url.pathname === '/submit' && request.method === 'POST') {
-        return handleSubmit(request, env, corsHeaders);
+        return await handleSubmit(request, env, corsHeaders);
       }
 
       if (url.pathname === '/vote' && request.method === 'POST') {
-        return handleVote(request, env, corsHeaders);
+        return await handleVote(request, env, corsHeaders);
       }
 
       if (url.pathname === '/comment' && request.method === 'POST') {
-        return handleComment(request, env, corsHeaders);
+        return await handleComment(request, env, corsHeaders);
       }
 
       if (url.pathname === '/react' && request.method === 'POST') {
-        return handleReact(request, env, corsHeaders);
+        return await handleReact(request, env, corsHeaders);
       }
 
       return json({ error: 'Not found' }, corsHeaders, 404);
