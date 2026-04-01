@@ -19,7 +19,7 @@
       "artist": "The Cars",
       "albumArt": "https://i.scdn.co/image/ab67616d0000b2732b46df64cf65a2d2b6e9a2e7",
       "trackId": "60eOMEt3WNVX1m1jmApmnX",
-      "votes": 0
+      "votes": 1
     },
     {
       "submitter": "Tanya",
@@ -46,6 +46,11 @@
       "votes": 0
     }
   ],
-  "votes": [],
+  "votes": [
+    {
+      "voter": "Kerry",
+      "trackId": "60eOMEt3WNVX1m1jmApmnX"
+    }
+  ],
   "winner": null
 }
