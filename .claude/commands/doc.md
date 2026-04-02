@@ -55,8 +55,50 @@ Claude generates documentation from scratch by analyzing the codebase, context, 
 | `adr` | Architecture Decision Record | `.claude/memory/` decisions, work item discussions, CONTEXT.md |
 | `onboarding` | Getting started / new developer guide | CONTEXT.md, README, project structure, setup scripts |
 | `migration` | Migration guide for a breaking change | Git diff, work item acceptance criteria, changelog |
+| `readme` | Project README.md | CONTEXT.md, discovery.md, tech stack, project structure |
 
 If `<topic>` doesn't match a known type, treat it as a free-form topic and generate documentation based on codebase analysis.
+
+#### README Generation (AAR #36)
+
+When `<topic>` is `readme`, generate a project-specific README.md — NOT a copy of framework internals.
+
+**Source material** (in priority order):
+1. `.claude/skills/CONTEXT.md` — Project name, description, tech stack, team
+2. `.claude/artifacts/discovery/discovery.md` — Project vision, domain, user journeys
+3. Project structure (scan directories, key files)
+4. `package.json` / `requirements.txt` / build files — for setup instructions
+
+**Template**:
+```markdown
+# {Project Name}
+
+{One-paragraph description from CONTEXT.md or discovery.md}
+
+## Quick Start
+
+{Setup instructions derived from tech stack — install deps, env vars, run commands}
+
+## Tech Stack
+
+{Table from CONTEXT.md tech stack section}
+
+## Project Structure
+
+{Key directories and their purpose — derived from scanning the actual codebase}
+
+## Development
+
+{How to run locally, test, deploy — derived from scripts, CI config, CONTEXT.md}
+
+## Contributing
+
+{Branch naming, PR process, commit conventions — derived from framework commands if present}
+```
+
+**What NOT to include**: Framework internals (`.claude/` directory details, work system docs, skill registry, provider configs). The README is for project users and contributors, not framework operators.
+
+**Output location**: `README.md` in project root (not `docs/`).
 
 ### Steps
 

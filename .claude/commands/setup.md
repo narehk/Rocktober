@@ -314,6 +314,31 @@ Present the list and ask for approval:
 
 Update discovery.md Epics section with the final list (or mark as skipped).
 
+#### ADO Discovery Item Creation (AAR #33)
+
+When a Work Provider is configured as ADO, each approved epic should also be created as a **Discovery** type work item in ADO:
+
+1. **Check Work Provider** — If no ADO provider configured, skip this section (epics stay local only).
+2. **For each approved epic**, create an ADO Discovery item:
+   ```bash
+   bash .claude/scripts/ado/ado-create-item.sh "Discovery" "{epic_title}"
+   ```
+3. **Populate fields**:
+   - **Description**: The epic's one-liner + problem statement
+   - **Acceptance Criteria**: The epic's open questions (what still needs to be figured out)
+4. **Record ADO ID** in the local work item file: `**ADO ID**: {ado_id}`
+5. **Post summary comment** on each Discovery item with the discovery context:
+   ```html
+   <div>
+     <b>Created from /setup discovery</b><br/>
+     <b>Problem</b>: {problem_statement}<br/>
+     <b>Proposed Solution</b>: {proposed_solution}<br/>
+     <b>Suggested Experts</b>: {expert_list}
+   </div>
+   ```
+
+Discovery items are the entry point for the Rapid-Cycle workflow — they get refined via `/work refine` before decomposition into Planned Work items.
+
 ### Step 4: Work Categories
 
 Present default work categories with the option to customize:

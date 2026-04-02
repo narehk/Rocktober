@@ -347,6 +347,28 @@ Create a work item in ADO and a local mirror.
 
 **On CLI failure**: Fall back to Offline Fallback Protocol — create local item with `**Sync**: pending`, warn user.
 
+### Known MCP Behavior: System.Parent Does Not Create Links (AAR #38)
+
+The ADO MCP tool `wit_create_work_item` accepts `System.Parent` in the `fields` array but **does NOT create the actual parent-child link**. The field is silently ignored.
+
+**Workaround**: Always use a two-step process when creating child items via MCP:
+
+1. **Create the item** via `wit_create_work_item` (without `System.Parent`)
+2. **Link to parent** via `wit_work_items_link`:
+   ```
+   wit_work_items_link({
+     project: "{project}",
+     updates: [{ id: {child_id}, linkToId: {parent_id}, type: "parent" }]
+   })
+   ```
+
+**Or use the shell script** which handles both in one call:
+```bash
+bash .claude/scripts/ado/ado-create-item.sh "{type}" "{title}" --parent {parent_id}
+```
+
+**When using MCP batch creation** (`wit_add_child_work_items`): This tool DOES handle parent linking correctly — the `parentId` parameter creates the link. The issue is only with `wit_create_work_item` + `System.Parent` field.
+
 ### list
 
 Query ADO and merge with the local board.

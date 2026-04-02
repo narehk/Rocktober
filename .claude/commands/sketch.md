@@ -185,6 +185,40 @@ You update a color in pencil.dev
 - **pencil.dev → Code**: `get_variables` reads tokens, code implements them
 - **Code → pencil.dev**: `set_variables` can push code-side changes back to design files
 
+## Frame Sizing Workarounds (AAR #37)
+
+pencil.dev frame sizing can cause content overflow and visual overlap. Apply these practices:
+
+### Common Sizing Issues
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| Text overflows container | Fixed height on text-containing frame | Use `fit_content` for height instead of fixed values |
+| Children overlap parent bounds | Parent too small for child content | Set parent sizing to `fit_content` or use `scroll` overflow |
+| Frame clips content unexpectedly | Fixed dimensions + overflow hidden | Use `fit_content` or increase container dimensions |
+| Nested frames cause layout collapse | Multiple fixed-size nesting | Use `fit_content` on at least the innermost frames |
+
+### Sizing Best Practices
+
+1. **Prefer `fit_content` over fixed heights** for frames containing text or variable-length content
+2. **Use fixed dimensions only** for: image containers, icon frames, decorative elements with known sizes
+3. **Validate with `snapshot_layout`** after any `batch_design` call that changes frame sizes:
+   ```
+   snapshot_layout({ filePath: "file.pen", parentId: "{frame_id}", problemsOnly: true })
+   ```
+   This returns only nodes with clipping, overflow, or overlap issues.
+4. **Use `get_screenshot`** to visually confirm layout after structural changes — don't trust code alone
+5. **When stacking frames vertically** (layout: "vertical"), set the container height to `fit_content` to avoid truncation
+6. **Text nodes**: Never set a fixed height on a text node — text length varies. Use `fit_content` for height, optionally fixed width for wrapping.
+
+### Debugging Sizing Issues
+
+When content appears clipped or overlapping:
+1. Run `snapshot_layout` with `problemsOnly: true` on the affected parent
+2. Check each flagged node for `fit_content` vs fixed sizing mismatch
+3. Update sizing via `batch_design` → `U()` operations
+4. Re-verify with `get_screenshot`
+
 ## Fallback: No MCP Available
 
 If pencil.dev MCP is not available (not installed, not running):

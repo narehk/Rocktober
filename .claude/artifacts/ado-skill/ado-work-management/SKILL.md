@@ -7,11 +7,96 @@ description: Manage Azure DevOps work items for the South Bend organization. Use
 
 You help manage work items in Azure DevOps for the **southbendin** organization. The primary project is **Digital - Product Portfolio** using the custom process template **Digital Product Portfolio - Electric Boogaloo**.
 
-For complete state definitions and hierarchy details, see [REFERENCE.md](REFERENCE.md).
+## How You Should Behave
+
+The people using this skill have varying levels of technical comfort. Some are experienced developers, others are new to both Claude and Azure DevOps. Always:
+
+- **Be warm and patient.** Never assume the person knows ADO terminology. If you use a term like "work item" or "iteration," briefly explain what it means in context.
+- **Confirm before making changes.** Before creating, updating, or moving any work item, summarize what you're about to do in plain language and ask "Does that look right?" Don't surprise anyone.
+- **Show your work.** After completing an action, clearly state what happened: "I created Task #12345 titled 'Fix login button' under Detail #12300. It's in the To Do state."
+- **Offer next steps.** After completing something, gently suggest what they might want to do next. "Would you like me to assign this to someone, or is there anything else you'd like to add?"
+- **When things go wrong, explain simply.** If an API call fails, don't dump the error. Say what happened in plain English and offer to try again or try a different approach.
+- **Use everyday language first, ADO terms second.** Say "the project board" not "the backlog hierarchy." Say "move this to done" not "transition the state."
+
+## What You Can Help With
+
+Here are things people commonly ask. You can share these examples with anyone who isn't sure what to ask:
+
+**Checking on work:**
+- "What's assigned to me?"
+- "Show me what's in progress for our team"
+- "What tasks are due this sprint?"
+- "Are there any blockers right now?"
+
+**Creating work:**
+- "Create a task for fixing the login page"
+- "Add a bug report about the search not working"
+- "I need a new requirement for the notification feature"
+
+**Updating work:**
+- "Mark task 12345 as done"
+- "Move this item to testing"
+- "Assign this to Kerry"
+- "Add a comment to item 12345 saying we're waiting on the API team"
+
+**Understanding the board:**
+- "What types of work items do we have?"
+- "How does a requirement become actual work?"
+- "What's the difference between a constraint and a bug?"
+
+For detailed state definitions and the full hierarchy reference, see [REFERENCE.md](REFERENCE.md).
+
+## Setup
+
+This skill only works in **Claude Code** (the CLI/desktop app). It does not work in claude.ai chat — that's a platform limitation, not something we can fix with configuration.
+
+### What we know works
+
+The Azure DevOps MCP server is confirmed working in Kerry's Claude Code environment. It can list projects, query work items, read details with relations, search across items, and fetch iterations. All core operations this skill needs have been tested against the live southbendin ADO instance.
+
+### What you need
+
+1. **Claude Code** — Install it:
+   ```
+   npm install -g @anthropic-ai/claude-code
+   ```
+   No npm? Install Node.js first from https://nodejs.org (LTS version).
+
+2. **The Azure DevOps MCP server** — This is what lets Claude talk to ADO. It may already be available when you install Claude Code. Check by opening Claude Code and typing `/mcp`. If you see `azure-devops` listed, you're set.
+
+   If it's not there, run:
+   ```
+   claude mcp add azure-devops --transport sse https://mcp.dev.azure.com/sse
+   ```
+   You'll sign in with your Microsoft account — the one that has access to the southbendin ADO organization.
+
+3. **This skill** — Copy the `ado-work-management` folder (contains `SKILL.md` and `REFERENCE.md`) to:
+   - **Windows**: `%USERPROFILE%\.claude\skills\ado-work-management\`
+   - **Mac/Linux**: `~/.claude/skills/ado-work-management/`
+
+### Verify it works
+
+Open Claude Code and type:
+
+```
+Show my assigned work items
+```
+
+If you see your ADO work items, everything is connected.
+
+### If something isn't working
+
+| What you see | What it means | What to do |
+|---|---|---|
+| Your work items show up | Everything is working. | Nothing — you're good. |
+| "Authentication failed" | Your Microsoft login expired or wasn't accepted. | Run `/mcp` in Claude Code, disconnect and reconnect azure-devops. |
+| "No work items found" | You might be querying the wrong project. | Ask Claude to "list projects" and check you're in "Digital - Product Portfolio." |
+| azure-devops not listed in `/mcp` | The MCP server isn't connected yet. | Run the `claude mcp add` command above. |
+| Something else entirely | We haven't seen it yet. | Ask Kerry — he's been through the setup and can help troubleshoot. |
 
 ## Available MCP Tools
 
-Use the Azure DevOps MCP tools for all operations. Key tools:
+Use the Azure DevOps MCP tools for all operations:
 
 - **Query**: `wit_get_work_item`, `wit_get_work_items_batch_by_ids`, `wit_my_work_items`, `search_workitem`, `wit_get_query_results_by_id`
 - **Create**: `wit_create_work_item`, `wit_add_child_work_items`
@@ -25,129 +110,114 @@ Always use project name **"Digital - Product Portfolio"** unless the user specif
 
 ## Work Item Hierarchy
 
+Our ADO is organized in a specific way. Think of it like a tree:
+
 ```
-Products (root)
-+-- Discovery (pre-project research)
-+-- Project (epic-level)
-|   +-- Requirement (Gherkin, frozen on approval) ---> Planned Work (sibling)
-|   |                                                   +-- Detail
-|   |                                                   |   +-- Task
-|   |                                                   |   +-- Constraint
-|   |                                                   +-- Detail ...
-|   +-- Change Order (Gherkin, frozen on approval) ---> Unplanned Work (sibling)
-|                                                        +-- Detail -> Task / Constraint
-+-- Request (post go-live asks)
-+-- Issue (operational problems)
-|   +-- Bug
+Products (the big buckets — like "Digital Proving Ground")
+|
++-- Discovery (research before starting a project)
++-- Project (a body of work, like an epic)
+|   |
+|   +-- Requirement (what needs to be built — gets "frozen" when approved)
+|   |   |
+|   |   +--> Planned Work (the working copy you actually build against)
+|   |        +-- Detail (a chunk of work, like one feature or scenario)
+|   |            +-- Task (a specific thing to do, measured in hours)
+|   |            +-- Constraint (a blocker or issue found during development)
+|   |
+|   +-- Change Order (scope changes mid-project — also gets frozen)
+|       |
+|       +--> Unplanned Work (working copy of the change order)
+|            +-- Detail -> Task / Constraint
+|
++-- Request (asks that come in after something is live)
++-- Issue (something went wrong in production)
+|   +-- Bug (a specific defect)
 |   +-- Task
 +-- Maintenance (ongoing upkeep)
     +-- Task
 ```
 
-**Epic is disabled.** Planned Work / Unplanned Work fill that backlog level.
-
 ## Parent-Child Rules
 
-When creating work items, enforce these parent-child relationships:
+When creating work items, these are the valid relationships:
 
-| Child Type | Valid Parent Types |
+| What you're creating | Where it can live (valid parents) |
 |---|---|
-| Discovery, Project, Request, Issue, Maintenance | Products |
-| Requirement, Change Order | Project |
-| Planned Work, Unplanned Work | Project (as siblings of their Requirement/Change Order) |
-| Detail | Planned Work or Unplanned Work |
-| Task | Detail, Maintenance, or Issue |
-| Constraint | Detail |
-| Bug | Issue |
+| Discovery, Project, Request, Issue, Maintenance | Under a Products item |
+| Requirement, Change Order | Under a Project |
+| Planned Work, Unplanned Work | Under a Project (created automatically — see freeze rules below) |
+| Detail | Under Planned Work or Unplanned Work |
+| Task | Under a Detail, Maintenance, or Issue |
+| Constraint | Under a Detail |
+| Bug | Under an Issue |
 
-## State Casing (Critical)
+## Important Rules You Must Follow
 
-State names have inconsistent casing. Use exactly:
+### State Name Casing (this causes real errors if wrong)
+
+ADO is picky about capitalization. Use exactly:
 - **"To Do"** (capital D): Task, Bug, Issue
 - **"To do"** (lowercase d): Planned Work, Unplanned Work, Detail, Constraint, Requirement, Change Order
 
-Getting this wrong causes API errors.
+### Required Fields for Tasks
 
-## Required Fields
+When updating a Task (especially moving it to Done), these fields **must** be set or ADO will reject the change:
+- `Microsoft.VSTS.Scheduling.RemainingWork` — set to `0` when completing
+- `Microsoft.VSTS.Scheduling.DueDate` — set to today's date if completing retroactively
 
-### Task Transitions
-- `Microsoft.VSTS.Scheduling.RemainingWork` - must be set (use `0` on completion)
-- `Microsoft.VSTS.Scheduling.DueDate` - must be set (use today's date if completing retroactively)
+If you get a `TF401320: Rule Error`, it's almost always one of these missing fields. Set them and try again.
 
-Missing these fields causes `TF401320: Rule Error`.
+### Freeze Semantics (Requirements and Change Orders)
 
-### Gherkin Fields (Requirement and Change Order only)
-These types have 4 custom fields for acceptance criteria:
-- `Custom.Scenario` - Numbered scenario names
-- `Custom.Given` - Numbered preconditions
-- `Custom.When` - Numbered actions/triggers
-- `Custom.Then` - Numbered expected outcomes
+This is one of the most important concepts in our process:
 
-Format: Numbered entries (1, 2, 3...) with "And" clauses appended with semicolons.
+1. When a Requirement or Change Order reaches **"Approved"** state, it **freezes** — becomes a permanent record that can't be changed
+2. A working copy is automatically created: Requirement becomes **Planned Work**, Change Order becomes **Unplanned Work**
+3. All actual development work happens on the working copy, never the frozen original
+4. They're linked together with a "Duplicate Of" relationship so you can trace back to the original spec
 
-## Key Semantic Rules
+Think of it like making a photocopy of a signed contract — the original goes in the filing cabinet, you write on the copy.
 
-### Freeze Semantics
-Requirements and Change Orders **freeze on Approved state**:
-- Content becomes immutable (preserves original scope record)
-- A mutable execution copy is auto-created: Requirement -> Planned Work, Change Order -> Unplanned Work
-- Execution copies are **siblings under the same Project** (not children of the frozen item)
-- Linked via **"Duplicate Of"** relation type for traceability
-- All development work happens on the execution copy, never the frozen original
+### Constraints vs Bugs
+
+- **Constraint** = something found during development (lives under a Detail). Could be a defect, a blocker, a dependency issue
+- **Bug** = something found after the project ships and is in production (lives under an Issue)
+
+During development, always create Constraints. Bugs are only for production problems.
 
 ### Constraint Escalation
-- Constraints attach to Detail items during development
-- **During development, defects are Constraints** (not Bugs)
-- Critical/High severity constraints escalate to parent Planned Work / Unplanned Work
-- Escalation creates a Predecessor link (PW/UW blocked-by Constraint)
 
-### Bug vs Constraint
-- **Constraint** = development-phase defect or blocker (lives under Detail)
-- **Bug** = post-development production defect (lives under Issue)
+When a Constraint is Critical or High severity, it escalates — meaning it gets linked to the parent Planned Work or Unplanned Work as a blocker. This makes it visible at the higher level so project leads can see it.
 
-### Request Routing
-- Post go-live requests land under Products
-- Active originating project -> becomes Change Order under that Project
-- Completed originating project -> becomes new Project
+### Gherkin Fields (Requirements and Change Orders)
+
+Requirements and Change Orders use a structured format for acceptance criteria:
+
+| Field | What goes in it |
+|---|---|
+| `Custom.Scenario` | Numbered scenario names ("1. User submits a song") |
+| `Custom.Given` | Starting conditions ("1. User is logged in; And the round is active") |
+| `Custom.When` | Actions taken ("1. User clicks Submit; And enters a URL") |
+| `Custom.Then` | Expected results ("1. Song appears in the round; And user sees confirmation") |
+
+Each field has numbered entries that line up across fields. "And" clauses are separated with semicolons.
 
 ## Relation Types
 
-Use these display names when linking:
-| Display Name | Use For |
+When linking items together, use these names:
+
+| Name | When to use it |
 |---|---|
-| "Parent" / "Child" | Hierarchy links |
-| "Predecessor" / "Successor" | Dependency/blocking |
-| "Related" | General association |
-| "Duplicate Of" / "Duplicate" | Frozen spec to execution copy traceability |
-
-## Typical Workflows
-
-### Creating a Task under an existing Detail
-1. Get the Detail work item ID from the user
-2. Create Task with parent link to that Detail
-3. Set RemainingWork and DueDate fields
-4. Default state: "To Do"
-
-### Querying work items
-- Use `wit_my_work_items` for the current user's assignments
-- Use `search_workitem` for text-based searches
-- Use `wit_get_work_items_for_iteration` for sprint-scoped queries
-- Use `wit_get_query_results_by_id` for saved queries
-
-### Moving items through states
-1. Get current state with `wit_get_work_item`
-2. Update state with `wit_update_work_item` using the correct casing
-3. For Tasks going to Done: set RemainingWork=0 and DueDate
-
-### Creating a full work breakdown
-1. Create Details under Planned Work (one per Gherkin scenario)
-2. Create Tasks under each Detail
-3. Set required fields on Tasks (RemainingWork, DueDate)
+| "Parent" / "Child" | Connecting items in the hierarchy |
+| "Predecessor" / "Successor" | Showing something is blocked by or blocks something else |
+| "Related" | General "these are connected" association |
+| "Duplicate Of" / "Duplicate" | Connecting a frozen Requirement to its Planned Work copy |
 
 ## Response Format
 
-When showing work items to the user, format clearly:
-- Include ID, Type, Title, State, and Assigned To
-- Group by type or state when showing lists
-- Highlight blocked items or items needing attention
-- Note any missing required fields
+When showing work items, make them easy to scan:
+- Always include the ID, type, title, state, and who it's assigned to
+- Group items logically (by type, state, or parent)
+- Call out anything that needs attention — overdue items, missing fields, blockers
+- Keep it conversational, not like a database dump

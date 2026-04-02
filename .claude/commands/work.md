@@ -659,6 +659,33 @@ Generate and present the author quiz as a standalone subcommand. Useful if the u
    - If artifact found (completed OR declined): Gate passes. Note presence for self-review detection later.
    - If artifact NOT found AND no `--force`: **Block**: "No review artifact found for W-{id}. Run `/work review {id}` first to complete the author quiz (or decline it), then retry. Or use `--force \"reason\"` to bypass."
    - If artifact NOT found AND `--force`: Log "review bypassed: {forceReason}" per Lifecycle Gate Check. Continue.
+3b. **Deliverable Verification Gate (AAR #43)** — Verify that tangible deliverables exist before allowing closure. This prevents items from being closed without evidence of completion.
+
+   a. **Read acceptance criteria** from the item file's `## Acceptance Criteria` section. If no criteria exist, skip this gate (item was not fully shaped — the review gate is the only safety net).
+
+   b. **Check for deliverables** based on item category and type:
+
+   | Category | Expected Deliverables | How to Check |
+   |----------|----------------------|--------------|
+   | `ui` | Code changes + visual verification | Git diff shows changes in UI files (html/css/js/jsx/tsx/vue/svelte); `.claude/artifacts/` has a screenshot or design review artifact for this item |
+   | `backend` | Code changes | Git diff shows changes in API/server files |
+   | `infrastructure` | Config/pipeline changes | Git diff shows changes in CI/CD, deploy, or config files |
+   | `docs` | Documentation files | Git diff shows changes in `docs/` or wiki publish artifact exists |
+   | `security` | Code changes + security review | Git diff shows changes; security-related review artifact preferred |
+   | (any) | Branch exists with commits | Item's `## Implementation` section has a branch name; branch has commits ahead of main |
+
+   c. **Verification logic**:
+      - If the item has a branch recorded in `## Implementation`: Check that the branch has at least one commit ahead of main (via `git log main..{branch} --oneline`)
+      - If the item has a PR recorded: PR existence is sufficient (PR Merge Gate handles merge status)
+      - If the item has no branch AND no PR AND category is not `docs`: **Warn** (not block): "No branch or PR found for W-{id}. This item may not have code deliverables. Continue?"
+      - If the item's category is `ui`: Check `.claude/artifacts/` for any file matching `*{id}*` or any recent screenshot artifact — if missing, **Warn**: "No visual verification artifact found for UI item W-{id}. Consider running a design review first."
+
+   d. **Gate behavior**:
+      - Warnings are advisory — they prompt the user but do not block
+      - Warnings are logged in the item's `## Stage History` as "Deliverable verification: {warning}"
+      - With `--force`: Warnings are suppressed, override logged per Lifecycle Gate Check
+      - This gate runs after the Review Gate and before updating the item file
+
 4. **Update item file** with completion notes
    b. **Set `**Completed**: YYYY-MM-DD`** in item file metadata (today's date)
 5. **Move item file** to `.claude/work/archive/`

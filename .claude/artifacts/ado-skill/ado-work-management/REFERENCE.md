@@ -1,183 +1,259 @@
 # ADO Process Template Reference
 
-Complete state definitions and hierarchy for **Digital Product Portfolio - Electric Boogaloo**.
+This is the detailed reference for the **Digital Product Portfolio - Electric Boogaloo** process template used in the **southbendin** Azure DevOps organization.
 
-## All Work Item Types and States
+You don't need to memorize any of this — Claude loads it when needed. But if you're curious about how our ADO is set up, this is the complete picture.
+
+## All Work Item Types and Their States
+
+Every work item type has specific states it can be in. Think of states like steps in a workflow — they tell you where something is in its journey from "just an idea" to "done."
+
+**Good news:** All transitions are open in our template, meaning you can move from any state to any other state. There are no blocked paths. However, some transitions require specific fields to be filled in first (especially Tasks — see below).
+
+---
 
 ### Products
-| State | Category |
+The highest level — these are the big organizational buckets.
+
+| State | What it means |
 |---|---|
-| Requested | Proposed |
-| Implementing | InProgress |
-| Configuring | InProgress |
-| Operational | InProgress |
-| Inactive | Completed |
-| Archived | Removed |
+| Requested | Someone asked for this product to be tracked |
+| Implementing | Actively being built out |
+| Configuring | Being set up and configured |
+| Operational | Live and running |
+| Inactive | No longer actively used |
+| Archived | Filed away for records |
 
 Custom fields: Organizational Unit, Common Issues, Success Metrics, SME 1/2/3
 
+---
+
 ### Project
-| State | Category |
+A body of work — think of it like an epic or initiative.
+
+| State | What it means |
 |---|---|
-| Requested | Proposed |
-| Scoping | Proposed |
-| In Progress | InProgress |
-| On Hold | InProgress |
-| Testing | InProgress |
-| Go-Live | Resolved |
-| Operational | Completed |
-| Completed | Removed |
-| Canceled | Removed |
+| Requested | Someone proposed this project |
+| Scoping | Figuring out what's involved |
+| In Progress | Actively being worked on |
+| On Hold | Paused for now |
+| Testing | Being tested before release |
+| Go-Live | In the process of launching |
+| Operational | Live and running |
+| Completed | All done |
+| Canceled | Decided not to do this |
+
+---
 
 ### Requirement
-| State | Category | Notes |
-|---|---|---|
-| To do | Proposed | Initial capture |
-| Scoping | InProgress | Gherkin being written |
-| On Hold | InProgress | |
-| Signing | Resolved | Stakeholder review |
-| **Approved** | **Completed** | **FREEZE POINT** |
-| Archived | Removed | |
+What needs to be built. Uses Gherkin format (Given/When/Then). **Freezes when approved.**
+
+| State | What it means |
+|---|---|
+| To do | Just captured, not yet detailed |
+| Scoping | Being fleshed out with Gherkin scenarios |
+| On Hold | Paused |
+| Signing | Being reviewed by stakeholders |
+| **Approved** | **Locked in — this is the freeze point. Content can't change after this.** |
+| Archived | Filed away |
 
 Gherkin fields: Custom.Scenario, Custom.Given, Custom.When, Custom.Then
 
+---
+
 ### Change Order
-| State | Category | Notes |
-|---|---|---|
-| To do | Proposed | |
-| On Hold | InProgress | |
-| Scoping | InProgress | Gherkin being written |
-| Signing | Resolved | |
-| **Approved** | **Completed** | **FREEZE POINT** |
-| Archived | Removed | |
+A scope change to an active project. Same freeze behavior as Requirements.
+
+| State | What it means |
+|---|---|
+| To do | Just captured |
+| On Hold | Paused |
+| Scoping | Being detailed with Gherkin scenarios |
+| Signing | Stakeholder review |
+| **Approved** | **Freeze point — locked in** |
+| Archived | Filed away |
 
 Same Gherkin fields as Requirement.
 
-### Planned Work (auto-created from approved Requirement)
-| State | Category |
-|---|---|
-| To do | Proposed |
-| On Hold | InProgress |
-| In Progress | InProgress |
-| Testing | InProgress |
-| Operational | Completed |
-| Completed | Removed |
-| Archived | Removed |
+---
 
-### Unplanned Work (auto-created from approved Change Order)
-Identical states to Planned Work.
+### Planned Work
+The working copy of an approved Requirement. This is where development actually happens.
+
+**You don't create these directly** — they're automatically generated when a Requirement reaches "Approved."
+
+| State | What it means |
+|---|---|
+| To do | Ready to start |
+| On Hold | Paused |
+| In Progress | Being worked on |
+| Testing | Being tested |
+| Operational | Live |
+| Completed | All done |
+| Archived | Filed away |
+
+---
+
+### Unplanned Work
+The working copy of an approved Change Order. Same states as Planned Work.
+
+**Also auto-created** — generated when a Change Order reaches "Approved."
+
+---
 
 ### Detail
-| State | Category |
+A chunk of work under Planned Work or Unplanned Work. Usually one per Gherkin scenario.
+
+| State | What it means |
 |---|---|
-| To do | Proposed |
-| Planning | InProgress |
-| On Hold | InProgress |
-| Developing | InProgress |
-| Testing | InProgress |
-| Completed | Completed |
-| Archived | Removed |
-| Canceled | Removed |
+| To do | Not started |
+| Planning | Figuring out the approach |
+| On Hold | Paused |
+| Developing | Being built |
+| Testing | Being tested |
+| Completed | Done |
+| Archived | Filed away |
+| Canceled | Decided not to do this |
+
+---
 
 ### Task
-| State | Category |
-|---|---|
-| To Do | Proposed |
-| Doing | InProgress |
-| Testing | InProgress |
-| On Hold | InProgress |
-| Done | Completed |
-| Archived | Removed |
+The smallest unit of work. Measured in hours.
 
-Required fields:
-- RemainingWork (Microsoft.VSTS.Scheduling.RemainingWork) - use 0 on completion
-- DueDate (Microsoft.VSTS.Scheduling.DueDate) - use today if completing retroactively
+| State | What it means |
+|---|---|
+| To Do | Not started |
+| Doing | In progress |
+| Testing | Being verified |
+| On Hold | Paused |
+| Done | Complete |
+| Archived | Filed away |
+
+**Important — required fields:**
+- **RemainingWork** (`Microsoft.VSTS.Scheduling.RemainingWork`) — must be set. Use `0` when the task is done.
+- **DueDate** (`Microsoft.VSTS.Scheduling.DueDate`) — must be set. Use today's date if you're completing it retroactively.
+
+If you skip these, ADO will reject your update with a `TF401320: Rule Error`. Claude knows to set these automatically.
+
+---
 
 ### Constraint
-| State | Category |
+A blocker or issue found during development. Attaches to a Detail.
+
+| State | What it means |
 |---|---|
-| To do | Proposed |
-| Investigating | InProgress |
-| Solution Found | Completed |
-| Closed - Will Not Fix | Removed |
+| To do | Just identified |
+| Investigating | Looking into it |
+| Solution Found | Figured out how to fix/work around it |
+| Closed - Will Not Fix | Decided this isn't going to be addressed |
 
 Severity levels: Critical, High, Medium, Low.
-Critical/High escalate to parent Planned/Unplanned Work via Predecessor link.
+**Critical and High severity constraints automatically escalate** — they get linked to the parent Planned Work / Unplanned Work as a blocker so leadership can see them.
+
+---
 
 ### Discovery
-| State | Category |
+Pre-project research. Determines if something is worth pursuing.
+
+| State | What it means |
 |---|---|
-| Scoping | Proposed |
-| On Hold | InProgress |
-| In Progress | InProgress |
-| Viable | Completed |
-| Archived | Removed |
-| Not Viable | Removed |
+| Scoping | Initial investigation |
+| On Hold | Paused |
+| In Progress | Actively researching |
+| Viable | Research says yes, worth doing |
+| Archived | Filed away |
+| Not Viable | Research says no, not worth pursuing |
+
+---
 
 ### Request
-| State | Category |
+Feature or report requests from users after something is live.
+
+| State | What it means |
 |---|---|
-| Requested | Proposed |
-| In Progress | InProgress |
-| Vetting | InProgress |
-| Completed | Completed |
-| Not Viable | Removed |
-| Archived | Removed |
-| Canceled | Removed |
+| Requested | Just received |
+| In Progress | Being looked at |
+| Vetting | Evaluating feasibility |
+| Completed | Handled |
+| Not Viable | Can't or won't do this |
+| Archived | Filed away |
+| Canceled | Withdrawn |
+
+Requests get routed: if the original project is still active, the request becomes a Change Order. If the project is complete, it becomes a new Project.
+
+---
 
 ### Issue
-| State | Category |
-|---|---|
-| To Do | Proposed |
-| Planning | InProgress |
-| On Hold | InProgress |
-| Developing | InProgress |
-| Completed | Completed |
-| Archived | Removed |
-| Canceled | Removed |
+An operational problem — something went wrong with a live system.
 
-### Bug (post-development only)
-| State | Category |
+| State | What it means |
 |---|---|
-| To Do | Proposed |
-| Doing | InProgress |
-| Done | Completed |
-| Closed - Will Not Fix | Removed |
-| Archived | Removed |
+| To Do | Just reported |
+| Planning | Figuring out how to fix it |
+| On Hold | Paused |
+| Developing | Being fixed |
+| Completed | Resolved |
+| Archived | Filed away |
+| Canceled | Not an issue after all |
+
+---
+
+### Bug
+A specific defect found in production. Lives under an Issue. **Only for post-development problems** — during development, use Constraints instead.
+
+| State | What it means |
+|---|---|
+| To Do | Just reported |
+| Doing | Being fixed |
+| Done | Fixed |
+| Closed - Will Not Fix | Decided not to fix |
+| Archived | Filed away |
+
+---
 
 ### Maintenance
-| State | Category |
+Ongoing upkeep from completed projects.
+
+| State | What it means |
 |---|---|
-| Scoping | Proposed |
-| Planning | InProgress |
-| Operational | InProgress |
-| Dormant | Completed |
-| Archived | Removed |
+| Scoping | Defining what maintenance involves |
+| Planning | Scheduling the work |
+| Operational | Actively being maintained |
+| Dormant | Maintenance paused or minimal |
+| Archived | No longer maintained |
 
-## Backlog Levels (top to bottom)
+If a bug is found during maintenance, it becomes an Issue (not a direct Bug under Maintenance).
 
-| Rank | Backlog Name | Work Item Types | Default Type |
+---
+
+## Backlog Levels
+
+This is how items stack in the ADO board view, from top to bottom:
+
+| Level | What's in it | Default type |
+|---|---|---|
+| 6 — Products | Initiative, Products | Products |
+| 5 — Projects | Project | Project |
+| 4 — Requirements | Change Order, Requirement | Requirement |
+| 3 — Work | Planned Work, Unplanned Work | Planned Work |
+| 2 — Details | Detail, Discovery, Issue, Maintenance, Request | Issue |
+| 1 — Tasks | Bug, Constraint, Task | Task |
+
+Note: Epic exists in the template but is disabled. Planned Work and Unplanned Work fill that role instead.
+
+---
+
+## Parent-Child Validation (Complete)
+
+| What you're creating | Valid parents | Auto-created? | Needs Gherkin? |
 |---|---|---|---|
-| 6 | Products | Initiative, Products | Products |
-| 5 | Projects | Project | Project |
-| 4 | Requirements | Change Order, Requirement | Requirement |
-| 3 | Work | Planned Work, Unplanned Work | Planned Work |
-| 2 | Details | Detail, Discovery, Issue, Maintenance, Request | Issue |
-| 1 | Tasks | Bug, Constraint, Task | Task |
-
-Note: Epic exists in the template but is disabled.
-
-## Complete Parent-Child Validation
-
-| Child Type | Valid Parent Types | Auto-Created? | Gherkin Required? |
-|---|---|---|---|
-| Products | (root) | No | No |
+| Products | (root — no parent) | No | No |
 | Discovery | Products | No | No |
 | Project | Products | No | No |
 | Requirement | Project | No | Yes |
 | Change Order | Project | No | Yes |
-| Planned Work | Project (sibling of Requirement) | Yes - on approval | No |
-| Unplanned Work | Project (sibling of Change Order) | Yes - on approval | No |
+| Planned Work | Project (sibling of Requirement) | Yes — on approval | No |
+| Unplanned Work | Project (sibling of Change Order) | Yes — on approval | No |
 | Detail | Planned Work, Unplanned Work | No | No |
 | Task | Detail, Maintenance, Issue | No | No |
 | Constraint | Detail | No | No |
@@ -186,54 +262,50 @@ Note: Epic exists in the template but is disabled.
 | Maintenance | Products | No | No |
 | Bug | Issue | No | No |
 
-## Relation Types (use display names)
+---
 
-| Display Name | Reference Name | Use For |
+## Relation Types
+
+| Display Name | Reference Name | When to use |
 |---|---|---|
-| "Parent" | System.LinkTypes.Hierarchy-Reverse | Set parent (child to parent) |
-| "Child" | System.LinkTypes.Hierarchy-Forward | Set child (parent to child) |
-| "Predecessor" | System.LinkTypes.Dependency-Reverse | Blocked-by link |
-| "Successor" | System.LinkTypes.Dependency-Forward | Blocks link |
+| "Parent" | System.LinkTypes.Hierarchy-Reverse | Connect child to parent |
+| "Child" | System.LinkTypes.Hierarchy-Forward | Connect parent to child |
+| "Predecessor" | System.LinkTypes.Dependency-Reverse | "This blocks me" link |
+| "Successor" | System.LinkTypes.Dependency-Forward | "I block this" link |
 | "Related" | System.LinkTypes.Related | General association |
-| "Duplicate Of" | System.LinkTypes.Duplicate-Reverse | Execution copy to frozen source |
-| "Duplicate" | System.LinkTypes.Duplicate-Forward | Frozen source to execution copy |
+| "Duplicate Of" | System.LinkTypes.Duplicate-Reverse | Execution copy pointing to frozen spec |
+| "Duplicate" | System.LinkTypes.Duplicate-Forward | Frozen spec pointing to execution copy |
 
-## Gherkin Field Format
+---
 
-Requirements and Change Orders populate these ADO fields:
+## Gherkin Format Details
 
-| Field Reference | Display Name | Content |
+Requirements and Change Orders use four structured fields:
+
+| Field | What goes in it | Example |
 |---|---|---|
-| Custom.Scenario | Scenario / Use Case | Numbered scenario names |
-| Custom.Given | Given / Assumptions | Numbered preconditions (one per scenario) |
-| Custom.When | When / Actions | Numbered actions/triggers (one per scenario) |
-| Custom.Then | Then / Expected Results | Numbered expected outcomes (one per scenario) |
+| Custom.Scenario | Scenario names, numbered | "1. User submits a song" |
+| Custom.Given | Starting conditions | "1. User is logged in; And the round is active" |
+| Custom.When | Actions taken | "1. User clicks Submit; And enters a Spotify URL" |
+| Custom.Then | Expected results | "1. Song appears in the round; And user sees confirmation" |
 
-Each field has numbered entries correlating across fields. "And" clauses appended with semicolons within each entry.
+Entries are numbered (1, 2, 3...) so they line up across fields. Multiple conditions within one scenario are joined with semicolons and "And."
 
-Example:
-- Scenario: "1. User submits a song"
-- Given: "1. User is logged in; And the round is active"
-- When: "1. User clicks Submit; And enters a Spotify URL"
-- Then: "1. Song appears in the round; And user sees confirmation"
+---
 
-## Typical End-to-End Flow
+## The Full Journey (How Work Flows End to End)
 
-1. Discovery created under Products - researches feasibility
-2. Discovery reaches Viable - informs Project creation
-3. Project created under Products
-4. Requirements written under Project with Gherkin scenarios
-5. Requirement flows: To do -> Scoping -> Signing -> Approved (FREEZE)
-6. On approval: Planned Work auto-created as Project sibling, linked via "Duplicate Of"
-7. Planned Work decomposed: Details (one per Gherkin scenario) -> Tasks
-8. Tasks flow: To Do -> Doing -> Testing -> Done
-9. Constraints discovered during dev - attached to Details, escalate if severe
-10. All Details/Tasks complete -> Planned Work -> Testing -> Completed
-11. Post go-live: Requests route to Change Order (active project) or new Project
-12. Change Orders follow same freeze -> Unplanned Work pattern
-13. Production bugs -> Issue -> Bug (not Constraint)
-14. Ongoing upkeep -> Maintenance -> Tasks
-
-## All Transitions Are Open
-
-Every work item type allows transitions from any state to any other state. There are no restricted transition paths in this process template. However, some transitions require specific fields to be set (notably Task requires RemainingWork and DueDate).
+1. **Discovery** is created under a Product — someone researches whether an idea is worth pursuing
+2. Discovery reaches **Viable** — green light, this should become a project
+3. **Project** is created under the Product
+4. **Requirements** are written under the Project using Gherkin scenarios
+5. Requirement flows through: To do → Scoping → Signing → **Approved** (FREEZE)
+6. On approval, a **Planned Work** item is automatically created as a sibling under the same Project, linked via "Duplicate Of"
+7. Planned Work gets broken down: **Details** (one per scenario) → **Tasks** (specific work)
+8. Tasks flow: To Do → Doing → Testing → Done
+9. If blockers or defects are found, **Constraints** are created under the Detail — severe ones escalate
+10. When everything's done: Planned Work → Testing → Completed
+11. After go-live, **Requests** come in from users → routed to Change Order (active project) or new Project
+12. **Change Orders** follow the same freeze → Unplanned Work pattern
+13. Production defects → **Issue** → **Bug**
+14. Ongoing upkeep → **Maintenance** → Tasks
