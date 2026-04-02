@@ -6,6 +6,12 @@
       "runtimeExecutable": "C:/Program Files/nodejs/node.exe",
       "runtimeArgs": ["serve.js"],
       "port": 3000
+    },
+    {
+      "name": "playwright",
+      "runtimeExecutable": "C:/Program Files/nodejs/npx.cmd",
+      "runtimeArgs": ["playwright", "test", "--reporter=line"],
+      "port": 0
     }
   ]
 }

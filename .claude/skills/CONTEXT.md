@@ -71,7 +71,10 @@ Rocktober/
 | Suite | Command | Description |
 |-------|---------|-------------|
 | JSON Schema | `node tests/validate-schemas.js` | Validate competition JSON against schemas |
-| HTML | Open `index.html` in browser | Manual visual check (no build step) |
+| E2E Lifecycle | `npx playwright test tests/e2e/competition.spec.js` | Full competition lifecycle (picker → auth → submit → vote → results) |
+| Visual Regression | `npx playwright test tests/e2e/visual.spec.js` | Screenshot comparison against baselines at 3 viewport sizes |
+| All E2E | `npx playwright test` | Run all Playwright tests |
+| Update Baselines | `npx playwright test --update-snapshots` | Regenerate visual regression baselines after intentional UI changes |
 | Worker | `wrangler dev` | Local Cloudflare Worker testing |
 
 ## Verify Steps
@@ -80,16 +83,23 @@ Rocktober/
 |------|---------|------|
 | HTML valid | W3C validator (manual or CI) | lint |
 | JSON valid | `node tests/validate-schemas.js` | test |
+| E2E pass | `npx playwright test` | test |
 | Links work | Manual or htmlproofer | lint |
 | Worker responds | `curl localhost:8787/health` | health |
 
 ## Design System
 
+- **Source of truth**: `design-system.pen` (pencil.dev file at repo root)
 - **Aesthetic**: 80s arcade cabinet meets hair metal concert poster
-- **Fonts**: Pixel font for headings (e.g., Press Start 2P), readable sans-serif for body
-- **Colors**: Neon pink, electric blue, chrome/silver, hot magenta, black backgrounds
+- **Fonts**: Pixel font for headings (Press Start 2P), readable sans-serif for body (Inter/system)
+- **Colors**: Neon pink (#ff2d95), electric blue (#00e5ff), chrome/silver, hot magenta (#ff00ff), neon purple (#b026ff), black backgrounds (#0a0a0a)
 - **Effects**: CRT scanlines, neon text-shadow glow, gradient chrome text, grid lines
 - **Animations**: Subtle flicker, glow pulse on hover, retro transitions
+- **Design tokens**: Defined as variables in `design-system.pen`, exported to CSS custom properties via `/sketch tokens`
+
+### pencil.dev Workflow
+
+Claude operates pencil.dev autonomously — launch, design, save, verify — no human intervention needed. See `visual-workflow.md` for the full autonomous pipeline and `sketch.md` for commands.
 
 ## Environment Variables
 

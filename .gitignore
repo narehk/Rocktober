@@ -21,6 +21,12 @@ Thumbs.db
 *~
 .vscode/settings.json
 
+# Dependencies
+node_modules/
+
+# Playwright
+test-results/
+playwright-report/
+
 # Cloudflare Worker
-worker/node_modules/
 worker/.wrangler/

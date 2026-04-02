@@ -1,0 +1,779 @@
+{
+  "version": "2.10",
+  "children": [
+    {
+      "type": "frame",
+      "id": "zF8lb",
+      "x": 0,
+      "y": 0,
+      "name": "Song Card",
+      "reusable": true,
+      "width": 480,
+      "fill": "$bg-card",
+      "cornerRadius": "$radius-md",
+      "stroke": {
+        "thickness": 1,
+        "fill": "$border-subtle"
+      },
+      "gap": 12,
+      "padding": [
+        12,
+        16
+      ],
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "frame",
+          "id": "QcyOZ",
+          "name": "Album Art",
+          "width": 56,
+          "height": 56,
+          "fill": "$chrome-dark",
+          "cornerRadius": "$radius-sm",
+          "children": [
+            {
+              "type": "icon_font",
+              "id": "LuIuC",
+              "layoutPosition": "absolute",
+              "x": 16,
+              "y": 16,
+              "name": "Play",
+              "width": 24,
+              "height": 24,
+              "iconFontName": "play",
+              "iconFontFamily": "lucide",
+              "fill": "$chrome-light"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "ZmlkM",
+          "name": "Song Info",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 4,
+          "children": [
+            {
+              "type": "text",
+              "id": "JT55P",
+              "name": "Song Title",
+              "fill": "$neon-blue",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Eruption",
+              "fontFamily": "Inter",
+              "fontSize": "$font-size-md",
+              "fontWeight": "600"
+            },
+            {
+              "type": "text",
+              "id": "A9Qqp",
+              "name": "Artist",
+              "fill": "$chrome-mid",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Van Halen",
+              "fontFamily": "Inter",
+              "fontSize": "$font-size-sm",
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "MUixg",
+              "name": "Submitter",
+              "fill": "$text-muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Submitted by Kerry",
+              "fontFamily": "Inter",
+              "fontSize": "$font-size-xs",
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "TKVRp",
+          "name": "Vote Button",
+          "fill": "$neon-pink",
+          "cornerRadius": "$radius-sm",
+          "gap": 6,
+          "padding": [
+            8,
+            16
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "jkfRJ",
+              "name": "Vote Label",
+              "fill": "#ffffff",
+              "content": "VOTE",
+              "fontFamily": "Press Start 2P",
+              "fontSize": 10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "pQ49j",
+      "x": 0,
+      "y": 120,
+      "name": "Round View — Voting Phase",
+      "width": 1280,
+      "height": 800,
+      "fill": "$bg-dark",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "dSFS0",
+          "name": "Header Bar",
+          "width": "fill_container",
+          "padding": [
+            12,
+            24
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "EUxfK",
+              "name": "Logo",
+              "fill": "$neon-pink",
+              "content": "ROCKTOBER",
+              "fontFamily": "Press Start 2P",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "NHZF0",
+              "name": "Header Right",
+              "gap": 16,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "DogyV",
+                  "name": "compName",
+                  "fill": "$chrome-mid",
+                  "content": "Electric Boogaloo",
+                  "fontFamily": "Inter",
+                  "fontSize": "$font-size-sm",
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "csyNL",
+                  "name": "userBtn",
+                  "fill": "$neon-pink",
+                  "cornerRadius": "$radius-sm",
+                  "padding": [
+                    6,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "mPh5n",
+                      "name": "userName",
+                      "fill": "#ffffff",
+                      "content": "Kerry",
+                      "fontFamily": "Press Start 2P",
+                      "fontSize": 9,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "FxLMt",
+          "name": "Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "children": [
+            {
+              "type": "frame",
+              "id": "KNHFI",
+              "name": "Main Content",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "gap": 16,
+              "padding": 24,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "alqBa",
+                  "name": "Round Badge Row",
+                  "gap": 12,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "FNM3I",
+                      "name": "badge",
+                      "fill": "$neon-pink",
+                      "cornerRadius": "$radius-sm",
+                      "padding": [
+                        4,
+                        10
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "Mbcdr",
+                          "name": "badgeText",
+                          "fill": "#ffffff",
+                          "content": "ROUND 7",
+                          "fontFamily": "Press Start 2P",
+                          "fontSize": 8,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "SEFw5",
+                      "name": "phaseBadge",
+                      "fill": "$neon-blue",
+                      "cornerRadius": "$radius-sm",
+                      "padding": [
+                        4,
+                        10
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "oAsIv",
+                          "name": "phaseText",
+                          "fill": "#000000",
+                          "content": "VOTING OPEN",
+                          "fontFamily": "Press Start 2P",
+                          "fontSize": 8,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "kcrw5",
+                  "name": "Theme Title",
+                  "fill": "$text-primary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Songs That Make You Air Guitar",
+                  "fontFamily": "Press Start 2P",
+                  "fontSize": 16,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "5KlMU",
+                  "name": "themeMeta",
+                  "fill": "$text-muted",
+                  "content": "Picked by Alex · Voting closes at 4:30 PM ET",
+                  "fontFamily": "Inter",
+                  "fontSize": "$font-size-sm",
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "83B1r",
+                  "name": "castVote",
+                  "fill": "$neon-pink",
+                  "content": "Cast Your Vote",
+                  "fontFamily": "Press Start 2P",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "ojWN6",
+                  "name": "Submissions Grid",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "id": "OhBBj",
+                      "type": "ref",
+                      "ref": "zF8lb",
+                      "name": "card1",
+                      "descendants": {
+                        "JT55P": {
+                          "content": "Free Bird"
+                        },
+                        "A9Qqp": {
+                          "content": "Lynyrd Skynyrd"
+                        },
+                        "MUixg": {
+                          "content": "Submitted by Jordan"
+                        }
+                      }
+                    },
+                    {
+                      "id": "KcVVG",
+                      "type": "ref",
+                      "ref": "zF8lb",
+                      "name": "card2",
+                      "y": 88,
+                      "descendants": {
+                        "JT55P": {
+                          "content": "Crazy Train"
+                        },
+                        "A9Qqp": {
+                          "content": "Ozzy Osbourne"
+                        },
+                        "MUixg": {
+                          "content": "Submitted by Kerry · YOUR PICK"
+                        },
+                        "TKVRp": {
+                          "fill": "$chrome-dark"
+                        },
+                        "jkfRJ": {
+                          "content": "YOUR SONG",
+                          "fill": "$text-muted"
+                        }
+                      }
+                    },
+                    {
+                      "id": "zCqqq",
+                      "type": "ref",
+                      "ref": "zF8lb",
+                      "name": "card3",
+                      "y": 176,
+                      "descendants": {
+                        "JT55P": {
+                          "content": "Thunderstruck"
+                        },
+                        "A9Qqp": {
+                          "content": "AC/DC"
+                        },
+                        "MUixg": {
+                          "content": "Submitted by Alex"
+                        },
+                        "TKVRp": {
+                          "fill": "$neon-yellow"
+                        },
+                        "jkfRJ": {
+                          "content": "VOTED",
+                          "fill": "#000000"
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "rPQRO",
+              "name": "Sidebar",
+              "width": 280,
+              "height": "fill_container",
+              "fill": "$bg-card",
+              "layout": "vertical",
+              "gap": 20,
+              "padding": [
+                24,
+                20
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "8XMOH",
+                  "name": "lbTitle",
+                  "fill": "$neon-yellow",
+                  "content": "LEADERBOARD",
+                  "fontFamily": "Press Start 2P",
+                  "fontSize": 11,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "5Sl63",
+                  "name": "lbSubtitle",
+                  "fill": "$text-muted",
+                  "content": "Updated after Round 7",
+                  "fontFamily": "Inter",
+                  "fontSize": "$font-size-xs",
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "JUe2m",
+                  "name": "LB Entries",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 10,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "PPr1d",
+                      "name": "lb1",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "AtYtz",
+                          "name": "lb1left",
+                          "gap": 8,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "0l1P2",
+                              "name": "lb1rank",
+                              "fill": "$neon-yellow",
+                              "content": "1",
+                              "fontFamily": "Press Start 2P",
+                              "fontSize": 14,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "7XSMq",
+                              "name": "lb1name",
+                              "fill": "$text-primary",
+                              "content": "Alex",
+                              "fontFamily": "Inter",
+                              "fontSize": "$font-size-md",
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "CAd2N",
+                          "name": "lb1wins",
+                          "fill": "$neon-green",
+                          "content": "4 wins",
+                          "fontFamily": "Press Start 2P",
+                          "fontSize": 9,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "6b25I",
+                      "name": "lb2",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "aO5OV",
+                          "name": "lb2left",
+                          "gap": 8,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "d3IyC",
+                              "name": "lb2rank",
+                              "fill": "$chrome-mid",
+                              "content": "2",
+                              "fontFamily": "Press Start 2P",
+                              "fontSize": 14,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "h1cTu",
+                              "name": "lb2name",
+                              "fill": "$text-primary",
+                              "content": "Kerry",
+                              "fontFamily": "Inter",
+                              "fontSize": "$font-size-md",
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "rB9M4",
+                          "name": "lb2wins",
+                          "fill": "$text-secondary",
+                          "content": "2 wins",
+                          "fontFamily": "Press Start 2P",
+                          "fontSize": 9,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "chVvr",
+                      "name": "lb3",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "sl7sj",
+                          "name": "lb3left",
+                          "gap": 8,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "O1PAI",
+                              "name": "lb3rank",
+                              "fill": "$chrome-mid",
+                              "content": "3",
+                              "fontFamily": "Press Start 2P",
+                              "fontSize": 14,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "3J022",
+                              "name": "lb3name",
+                              "fill": "$text-primary",
+                              "content": "Jordan",
+                              "fontFamily": "Inter",
+                              "fontSize": "$font-size-md",
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "1UFNf",
+                          "name": "lb3wins",
+                          "fill": "$text-secondary",
+                          "content": "1 win",
+                          "fontFamily": "Press Start 2P",
+                          "fontSize": 9,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "rectangle",
+                  "id": "9sMtL",
+                  "name": "divider",
+                  "fill": "$border-subtle",
+                  "width": "fill_container",
+                  "height": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "vJNCv",
+                  "name": "Voting Info",
+                  "width": "fill_container",
+                  "fill": "#ff2d9518",
+                  "cornerRadius": "$radius-md",
+                  "layout": "vertical",
+                  "gap": 8,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "61zRm",
+                      "name": "viTitle",
+                      "fill": "$neon-pink",
+                      "content": "VOTING INFO",
+                      "fontFamily": "Press Start 2P",
+                      "fontSize": 9,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "aSy1K",
+                      "name": "viDesc",
+                      "fill": "$text-secondary",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Pick your favorite song for today's theme. You can't vote for your own submission. One vote per round.",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Inter",
+                      "fontSize": "$font-size-xs",
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "zQYSa",
+                      "name": "viTimer",
+                      "gap": 6,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon_font",
+                          "id": "UNsS3",
+                          "name": "timerIcon",
+                          "width": 14,
+                          "height": 14,
+                          "iconFontName": "clock",
+                          "iconFontFamily": "lucide",
+                          "fill": "$neon-pink"
+                        },
+                        {
+                          "type": "text",
+                          "id": "yATyE",
+                          "name": "timerText",
+                          "fill": "$neon-pink",
+                          "content": "1h 23m remaining",
+                          "fontFamily": "Inter",
+                          "fontSize": "$font-size-sm",
+                          "fontWeight": "600"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variables": {
+    "bg-card": {
+      "type": "color",
+      "value": "#1a1a2e"
+    },
+    "bg-card-hover": {
+      "type": "color",
+      "value": "#252545"
+    },
+    "bg-dark": {
+      "type": "color",
+      "value": "#0a0a0a"
+    },
+    "border-subtle": {
+      "type": "color",
+      "value": "#333355"
+    },
+    "chrome-dark": {
+      "type": "color",
+      "value": "#555555"
+    },
+    "chrome-light": {
+      "type": "color",
+      "value": "#e8e8e8"
+    },
+    "chrome-mid": {
+      "type": "color",
+      "value": "#a0a0a0"
+    },
+    "font-size-lg": {
+      "type": "number",
+      "value": 18
+    },
+    "font-size-md": {
+      "type": "number",
+      "value": 14
+    },
+    "font-size-sm": {
+      "type": "number",
+      "value": 12
+    },
+    "font-size-title": {
+      "type": "number",
+      "value": 32
+    },
+    "font-size-xl": {
+      "type": "number",
+      "value": 24
+    },
+    "font-size-xs": {
+      "type": "number",
+      "value": 10
+    },
+    "gold-winner": {
+      "type": "color",
+      "value": "#ffd700"
+    },
+    "hot-magenta": {
+      "type": "color",
+      "value": "#ff00ff"
+    },
+    "neon-blue": {
+      "type": "color",
+      "value": "#00e5ff"
+    },
+    "neon-green": {
+      "type": "color",
+      "value": "#39ff14"
+    },
+    "neon-pink": {
+      "type": "color",
+      "value": "#ff2d95"
+    },
+    "neon-purple": {
+      "type": "color",
+      "value": "#b026ff"
+    },
+    "neon-yellow": {
+      "type": "color",
+      "value": "#ffe600"
+    },
+    "radius-lg": {
+      "type": "number",
+      "value": 12
+    },
+    "radius-md": {
+      "type": "number",
+      "value": 8
+    },
+    "radius-sm": {
+      "type": "number",
+      "value": 4
+    },
+    "spacing-lg": {
+      "type": "number",
+      "value": 24
+    },
+    "spacing-md": {
+      "type": "number",
+      "value": 16
+    },
+    "spacing-sm": {
+      "type": "number",
+      "value": 8
+    },
+    "spacing-xl": {
+      "type": "number",
+      "value": 32
+    },
+    "spacing-xs": {
+      "type": "number",
+      "value": 4
+    },
+    "text-muted": {
+      "type": "color",
+      "value": "#555555"
+    },
+    "text-primary": {
+      "type": "color",
+      "value": "#e8e8e8"
+    },
+    "text-secondary": {
+      "type": "color",
+      "value": "#a0a0a0"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "name": "rocktober",
+  "version": "1.0.0",
+  "description": "A daily themed playlist competition where group members each submit a song matching the day's theme, then vote on a winner.",
+  "main": "serve.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "npx playwright test",
+    "test:desktop": "npx playwright test --project=desktop",
+    "test:mobile": "npx playwright test --project=mobile",
+    "test:update-snapshots": "npx playwright test --update-snapshots"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/narehk/Rocktober.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/narehk/Rocktober/issues"
+  },
+  "homepage": "https://github.com/narehk/Rocktober#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.59.1"
+  }
+}

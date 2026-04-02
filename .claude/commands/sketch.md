@@ -8,7 +8,10 @@
 
 ### Installation
 
-pencil.dev is available as a **VS Code / Cursor extension**. Search for "Pencil" in the Extensions marketplace and install it.
+pencil.dev is available as a **desktop Electron app** or **VS Code / Cursor extension**.
+
+- **Desktop app**: Install from pencil.dev — runs as a standalone application
+- **VS Code extension**: Search for "Pencil" in the Extensions marketplace
 
 ### Creating a `.pen` File
 
@@ -17,32 +20,46 @@ pencil.dev is available as a **VS Code / Cursor extension**. Search for "Pencil"
 3. **Naming conventions**:
    - `design-system.pen` — Main design system (tokens, colors, typography)
    - `<feature-name>.pen` — Feature-specific designs (e.g., `dashboard.pen`, `login-flow.pen`)
-4. Open the `.pen` file in VS Code / Cursor — pencil.dev's visual editor will activate automatically
-5. **Save immediately with Ctrl+S** — the file must be saved to disk before Git can track it
+4. Open the `.pen` file in Pencil — the visual editor activates automatically
+5. Or use MCP: `open_document("new")` or `open_document("/path/to/file.pen")`
 
-### Opening an Existing `.pen` File
+### Launching Pencil (Autonomous)
 
-Simply open any `.pen` file in VS Code / Cursor. The pencil.dev editor opens automatically. You can also use **File > Open** or the Explorer sidebar.
+Claude can launch and operate Pencil without human intervention:
 
-### Saving `.pen` Files (Important)
+```powershell
+# Launch the desktop app (adjust path per installation)
+powershell.exe -NoProfile -Command "Start-Process 'C:\Users\<user>\AppData\Local\Programs\Pencil\Pencil.exe'"
+```
 
-**pencil.dev does NOT auto-save.** When Claude uses `batch_design` to create or modify design elements, changes exist in the editor's memory but are **not written to disk** until you save.
+MCP tools connect automatically ~3 seconds after the app starts. Verify with `get_editor_state`.
 
-- **Always press Ctrl+S** (Cmd+S on Mac) after Claude makes design changes
-- Claude cannot trigger a save programmatically — this is a pencil.dev limitation
-- **After any `batch_design` operation**, Claude should remind the user: "Save the .pen file with Ctrl+S to persist these changes."
-- Save frequently — unsaved changes are lost if the editor closes
+### Saving `.pen` Files
+
+pencil.dev does NOT auto-save. Claude saves programmatically via PowerShell SendKeys:
+
+```powershell
+powershell.exe -NoProfile -Command "Add-Type -AssemblyName Microsoft.VisualBasic; Add-Type -AssemblyName System.Windows.Forms; [Microsoft.VisualBasic.Interaction]::AppActivate('Pencil'); Start-Sleep -Milliseconds 500; [System.Windows.Forms.SendKeys]::SendWait('^s')"
+```
+
+After saving, verify the file exists on disk:
+```bash
+ls -la path/to/file.pen
+```
+
+**Always save after `batch_design` or `set_variables` operations.**
 
 ### Activating the MCP Connection
 
-The pencil.dev MCP server **starts automatically** when a `.pen` file is open in the editor. No manual configuration needed. Claude Code detects the MCP tools when they become available.
+The pencil.dev MCP server **starts automatically** when Pencil is running (desktop app or VS Code extension). No manual configuration needed. Claude Code detects the MCP tools when they become available.
 
-**To verify the connection**: Run `/sketch` — if Claude can read design tokens, the MCP is active. If not, make sure a `.pen` file is open in your editor.
+**To verify the connection**: Run `get_editor_state` — if it returns the current document state, the MCP is active.
 
 ## Prerequisites
 
-- **pencil.dev** extension installed in VS Code / Cursor
-- A `.pen` file open in the editor (activates the MCP server)
+- **pencil.dev** desktop app installed (Electron) or VS Code/Cursor extension
+- Launch Pencil if not running: `powershell.exe -NoProfile -Command "Start-Process '<install-path>\Pencil.exe'"`
+- MCP tools connect automatically when Pencil is running (~3 seconds)
 
 ## pencil.dev MCP Tools
 
@@ -50,13 +67,16 @@ pencil.dev provides these MCP tools automatically when running:
 
 | MCP Tool | Purpose |
 |----------|---------|
-| `batch_design` | Create, modify, delete design elements (**remind user to Ctrl+S after**) |
+| `batch_design` | Create, modify, delete design elements (save after via PowerShell) |
 | `batch_get` | Read components, search elements, inspect hierarchy |
 | `get_screenshot` | Render design preview images |
 | `snapshot_layout` | Analyze layout structure, detect positioning issues |
 | `get_editor_state` | Access current editor context and selection |
 | `get_variables` | Read design tokens and theme values |
-| `set_variables` | Update design tokens and sync with CSS (**remind user to Ctrl+S after**) |
+| `set_variables` | Update design tokens and sync with CSS (save after via PowerShell) |
+| `open_document` | Open existing `.pen` file or create new one |
+| `export_nodes` | Export design nodes as PNG/JPEG/WEBP/PDF |
+| `get_guidelines` | Load design guides and style archetypes |
 
 ## Usage
 
@@ -187,5 +207,6 @@ The workflow stays the same; only the transport mechanism changes.
 - pencil.dev runs locally — no cloud dependency for design data
 - `.pen` files live in the project repo alongside code
 - Design tokens from pencil.dev should be the canonical source
-- The MCP server starts automatically when pencil.dev is open
-- **No auto-save**: Always remind the user to Ctrl+S after `batch_design` or `set_variables` operations. Claude cannot save `.pen` files programmatically.
+- The MCP server starts automatically when Pencil is running
+- Claude saves `.pen` files programmatically via PowerShell SendKeys (see "Saving" section above)
+- Claude can launch Pencil via `Start-Process` if not already running (see "Launching" section above)

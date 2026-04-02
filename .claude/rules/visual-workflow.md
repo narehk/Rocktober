@@ -55,13 +55,15 @@ These don't need diagrams:
 1. **Before**: Capture the current state (if modifying existing UI)
 2. **Implement**: Make the change
 3. **After**: Capture the new state
-4. **Analyze**: Compare before/after with this checklist:
+4. **Zoom**: Use preview zoom on specific areas — buttons, text, spacing, alignment. Don't assume code = correct.
+5. **Analyze**: Compare before/after AND against `.pen` design with this checklist:
    - Positioning and alignment correct?
    - Dimensions match expectations?
-   - Visual appearance matches design?
-   - Spacing consistent with design system?
+   - Visual appearance matches design source of truth (`.pen` file)?
+   - Spacing consistent with design system tokens?
    - Interactive elements functional?
-5. **Report**: Show findings to user
+   - Text readable at intended size?
+6. **Report**: Show findings to user
 
 ### Expert Assignment for UI Work
 
@@ -104,11 +106,57 @@ stateDiagram-v2
     InReview --> InProgress: changes needed
 ```
 
+## pencil.dev as Living Design Reference
+
+**For UI projects, the `.pen` file is the source of truth.**
+
+### Autonomous pencil.dev Workflow
+
+Claude can operate pencil.dev without human intervention:
+
+1. **Launch** (if not running):
+   ```powershell
+   powershell.exe -NoProfile -Command "Start-Process '<pencil-install-path>\Pencil.exe'"
+   ```
+   MCP tools connect automatically after ~3 seconds.
+
+2. **Open/create** `.pen` file via `open_document` MCP tool
+
+3. **Design** via `batch_design`, `set_variables`, `batch_get`, etc.
+
+4. **Save** (MCP has no save command — use PowerShell SendKeys):
+   ```powershell
+   powershell.exe -NoProfile -Command "Add-Type -AssemblyName Microsoft.VisualBasic; Add-Type -AssemblyName System.Windows.Forms; [Microsoft.VisualBasic.Interaction]::AppActivate('Pencil'); Start-Sleep -Milliseconds 500; [System.Windows.Forms.SendKeys]::SendWait('^s')"
+   ```
+
+5. **Verify** file exists on disk + `get_screenshot` for visual check
+
+### Build Phase UI Verification (Mandatory)
+
+During build phase, every UI change must follow this loop:
+
+1. **Code** the change
+2. **preview_screenshot** the live app at the affected screen
+3. **Zoom** into specific areas to verify details (don't assume code = correct)
+4. **Compare** against the `.pen` design using `get_screenshot` on the corresponding design node
+5. **Fix** discrepancies before moving on
+
+Skipping this loop is how UI drift happens. The loop takes 30 seconds and prevents change orders.
+
+### Design Token Flow
+
+```
+.pen file (design tokens) → /sketch tokens → CSS custom properties → Implementation
+```
+
+When design tokens change in the `.pen` file, `/sketch sync` detects the diff and reports affected areas.
+
 ## Integration with Other Rules
 
 - **artifact-first.md** — Visual artifacts ARE the "show me before you build" mechanism
 - **work-system.md** — Items in Shaping stage should include relevant diagrams
 - **roles-and-governance.md** — Visual artifacts enable the architect to make informed decisions
+- **testing-standards.md** — Visual regression tests catch drift that screenshot verification misses between sessions
 
 ## Anti-Patterns
 
