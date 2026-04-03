@@ -1,0 +1,28 @@
+{
+  "name": "testing again",
+  "slug": "testing-again",
+  "schemaVersion": 1,
+  "startDate": "2026-01-13",
+  "endDate": "2026-01-26",
+  "totalRounds": 10,
+  "themeMode": "round-robin",
+  "selfVoteAllowed": false,
+  "schedule": {
+    "timezone": "America/Indiana/Indianapolis",
+    "submissionOpen": "08:00",
+    "submissionClose": "15:00",
+    "votingOpen": "15:00",
+    "votingClose": "16:30",
+    "resultsReveal": "16:30"
+  },
+  "competitionDays": [
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri"
+  ],
+  "admins": [],
+  "members": [],
+  "themes": []
+}
