@@ -29,7 +29,17 @@
       "status": "active",
       "memberCount": 0,
       "totalRounds": 4,
-      "description": "Dogfood Test — 4 rounds"
+      "description": "Dogfood Test â 4 rounds"
+    },
+    {
+      "slug": "human-tets",
+      "name": "Human Tets",
+      "startDate": "2026-04-03",
+      "endDate": "2026-05-03",
+      "status": "active",
+      "memberCount": 0,
+      "totalRounds": 21,
+      "description": "Human Tets — 21 rounds"
     }
   ]
 }
