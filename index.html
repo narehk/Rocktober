@@ -22,11 +22,7 @@
     </div>
     <!-- Auth: Login prompt (shown when not authenticated) -->
     <div class="auth-bar hidden" id="auth-bar">
-      <div class="auth-login">
-        <input type="text" id="invite-code" class="invite-input" placeholder="Enter invite code..." maxlength="20" autocomplete="off">
-        <button class="auth-btn pixel-text" id="auth-submit">JOIN</button>
-      </div>
-      <p class="auth-status hidden" id="auth-status"></p>
+      <button class="auth-btn-sign-in pixel-text" id="auth-show-modal">SIGN IN</button>
     </div>
     <!-- Auth: Logged-in display -->
     <div class="auth-user hidden" id="auth-user">
@@ -44,6 +40,7 @@
         <p class="pixel-text blink">LOADING...</p>
       </div>
       <div class="picker-grid" id="picker-grid"></div>
+      <button class="create-comp-btn pixel-text" id="create-comp-btn">+ CREATE COMPETITION</button>
     </div>
   </div>
 
@@ -51,6 +48,7 @@
   <div class="competition-screen hidden" id="competition-screen">
     <div class="comp-nav">
       <button class="back-btn pixel-text" id="back-to-picker">&larr; ALL COMPETITIONS</button>
+      <button class="admin-btn-nav pixel-text hidden" id="admin-btn">&#9881; ADMIN</button>
     </div>
 
     <div class="app-layout">
@@ -103,6 +101,7 @@
           <div class="export-section hidden" id="export-section">
             <button class="export-btn" id="export-playlist">COPY PLAYLIST</button>
             <button class="export-btn export-btn-spotify" id="export-spotify">OPEN IN SPOTIFY</button>
+            <button class="export-btn export-btn-create" id="export-create-playlist">CREATE PLAYLIST</button>
           </div>
 
           <!-- Winner Display -->
@@ -166,6 +165,205 @@
           </div>
         </section>
       </aside>
+    </div>
+  </div>
+
+  <!-- Create Competition Modal -->
+  <div class="modal-overlay hidden" id="create-comp-overlay">
+    <div class="modal-panel create-comp-modal">
+      <h2 class="modal-title neon-pink-text pixel-text">Create Competition</h2>
+      <p class="modal-desc">Set up a new playlist battle. You can invite members after creation.</p>
+      <form id="create-comp-form" class="modal-form">
+        <div class="form-group">
+          <label class="form-label">Competition Name</label>
+          <input type="text" id="cc-name" class="form-input" placeholder="Rocktober 3: Return of the Shred" required autocomplete="off">
+        </div>
+        <div class="form-row">
+          <div class="form-group form-half">
+            <label class="form-label">Start Date</label>
+            <input type="date" id="cc-start" class="form-input" required>
+          </div>
+          <div class="form-group form-half">
+            <label class="form-label">End Date</label>
+            <input type="date" id="cc-end" class="form-input" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Timezone</label>
+          <select id="cc-timezone" class="form-input">
+            <option value="America/Indiana/Indianapolis">America/Indiana/Indianapolis</option>
+            <option value="America/New_York">America/New_York</option>
+            <option value="America/Chicago">America/Chicago</option>
+            <option value="America/Denver">America/Denver</option>
+            <option value="America/Los_Angeles">America/Los_Angeles</option>
+            <option value="UTC">UTC</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Competition Days</label>
+          <div class="day-picker" id="cc-days">
+            <button type="button" class="day-btn active" data-day="Mon">Mon</button>
+            <button type="button" class="day-btn active" data-day="Tue">Tue</button>
+            <button type="button" class="day-btn active" data-day="Wed">Wed</button>
+            <button type="button" class="day-btn active" data-day="Thu">Thu</button>
+            <button type="button" class="day-btn active" data-day="Fri">Fri</button>
+            <button type="button" class="day-btn" data-day="Sat">Sat</button>
+            <button type="button" class="day-btn" data-day="Sun">Sun</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Members (add after creation)</label>
+          <input type="text" class="form-input" placeholder="Share the invite code with your group after setup" disabled>
+        </div>
+        <button type="submit" class="form-submit pixel-text" id="cc-submit">CREATE COMPETITION</button>
+      </form>
+      <button class="modal-close" id="cc-close" aria-label="Close">&times;</button>
+    </div>
+  </div>
+
+  <!-- Admin Panel Modal -->
+  <div class="modal-overlay hidden" id="admin-overlay">
+    <div class="modal-panel admin-modal">
+      <h2 class="modal-title neon-pink-text pixel-text">Admin Tools</h2>
+      <p class="modal-desc">Manage rounds, phases, and competition state. Admin access only.</p>
+
+      <!-- Round Management -->
+      <div class="admin-section">
+        <h3 class="admin-section-title pixel-text">Round Management</h3>
+        <div class="admin-round-info" id="admin-round-info">
+          <span class="admin-round-name" id="admin-round-name">Round 1 — Loading...</span>
+          <button class="admin-btn admin-btn-blue pixel-text" id="admin-advance">ADVANCE</button>
+        </div>
+        <div class="admin-round-phase" id="admin-round-phase">
+          <span class="admin-phase-label">Current phase:</span>
+          <span class="admin-phase-value" id="admin-phase-value">submission</span>
+        </div>
+        <div class="phase-buttons" id="phase-buttons">
+          <button class="phase-btn active" data-phase="submission">SUBMISSION</button>
+          <button class="phase-btn" data-phase="voting">VOTING</button>
+          <button class="phase-btn" data-phase="results">RESULTS</button>
+        </div>
+      </div>
+
+      <!-- Danger Zone -->
+      <div class="admin-section danger-section">
+        <h3 class="admin-section-title pixel-text neon-red-text">Danger Zone</h3>
+        <div class="danger-card">
+          <div class="danger-info">
+            <strong>Reset Competition</strong>
+            <p class="danger-desc">Clear all submissions, votes, and comments. Keeps config and members.</p>
+          </div>
+          <button class="admin-btn admin-btn-red pixel-text" id="admin-reset">RESET</button>
+        </div>
+      </div>
+
+      <!-- Member Management -->
+      <div class="admin-section">
+        <h3 class="admin-section-title pixel-text">Member Management</h3>
+        <div class="member-add-row">
+          <input type="text" id="admin-member-name" class="form-input member-input" placeholder="New member name..." autocomplete="off">
+          <button class="admin-btn admin-btn-pink pixel-text" id="admin-add-member">ADD</button>
+        </div>
+        <div class="member-list" id="admin-member-list"></div>
+      </div>
+
+      <button class="modal-close" id="admin-close" aria-label="Close">&times;</button>
+    </div>
+  </div>
+
+  <!-- Playlist Export Modal -->
+  <div class="modal-overlay hidden" id="playlist-overlay">
+    <div class="modal-panel playlist-modal">
+      <h2 class="modal-title neon-pink-text pixel-text">Playlist Export</h2>
+      <p class="modal-desc">Export submissions as playlists to your connected music account.</p>
+
+      <!-- Round Playlist -->
+      <div class="playlist-section" id="round-playlist-section">
+        <div class="playlist-header">
+          <h3 class="playlist-round-title" id="playlist-round-title">Round Playlist</h3>
+          <span class="playlist-badge" id="playlist-track-count">0 songs</span>
+        </div>
+        <p class="playlist-theme" id="playlist-theme"></p>
+        <div class="playlist-tracks" id="playlist-tracks"></div>
+
+        <div class="form-group" style="margin-top:12px">
+          <label class="form-label">Export to</label>
+          <div class="playlist-providers">
+            <button class="playlist-provider-btn active" data-provider="spotify">Spotify</button>
+            <button class="playlist-provider-btn" data-provider="youtube" disabled>YouTube</button>
+            <button class="playlist-provider-btn" data-provider="apple" disabled>Apple</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Playlist Name</label>
+          <input type="text" id="playlist-name" class="form-input" autocomplete="off">
+        </div>
+
+        <button class="form-submit pixel-text playlist-create-btn" id="playlist-create-round">
+          &#9835; CREATE PLAYLIST ON SPOTIFY
+        </button>
+      </div>
+
+      <div class="playlist-divider"></div>
+
+      <!-- Season Playlist -->
+      <div class="playlist-section season-section">
+        <div class="playlist-header">
+          <h3 class="pixel-text" style="font-size:0.5rem;color:var(--gold)">Full Season Playlist</h3>
+          <span class="playlist-badge playlist-badge-gold" id="season-track-count">0 songs</span>
+        </div>
+        <p class="season-desc">Export every submission from the entire competition as one mega-playlist. Updates as new rounds complete.</p>
+        <label class="notif-check" style="margin-bottom:6px"><input type="checkbox" id="season-include-all" checked> Include all submissions (not just winners)</label>
+        <label class="notif-check"><input type="checkbox" id="season-auto-update"> Auto-update when new rounds complete</label>
+        <button class="form-submit pixel-text playlist-create-btn season-create-btn" id="playlist-create-season" style="margin-top:12px">
+          &#9835; CREATE SEASON PLAYLIST
+        </button>
+      </div>
+
+      <button class="modal-close" id="playlist-close" aria-label="Close">&times;</button>
+    </div>
+  </div>
+
+  <!-- Auth Modal -->
+  <div class="modal-overlay hidden" id="auth-modal-overlay">
+    <div class="modal-panel auth-modal">
+      <h2 class="modal-title neon-pink-text pixel-text" id="auth-modal-title">Sign In</h2>
+      <p class="modal-desc" id="auth-modal-subtitle">Join the playlist battle</p>
+      <div class="auth-modal-options">
+        <button class="auth-oauth-btn auth-github-btn" id="auth-github">
+          <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          Continue with GitHub
+        </button>
+        <button class="auth-oauth-btn auth-microsoft-btn" id="auth-microsoft">
+          <svg width="20" height="20" viewBox="0 0 21 21" fill="none"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
+          Continue with Microsoft
+        </button>
+        <div class="auth-divider"><span>OR</span></div>
+        <div class="auth-invite-section">
+          <input type="text" id="invite-code" class="form-input" placeholder="Enter invite code..." maxlength="20" autocomplete="off">
+          <button class="form-submit pixel-text" id="auth-submit" style="margin-top:8px">JOIN THE BATTLE</button>
+        </div>
+      </div>
+      <p class="auth-status hidden" id="auth-status"></p>
+      <button class="modal-close" id="auth-modal-close" aria-label="Close">&times;</button>
+    </div>
+  </div>
+
+  <!-- Confirm Dialog (reusable) -->
+  <div class="modal-overlay hidden" id="confirm-overlay">
+    <div class="modal-panel confirm-modal">
+      <div class="confirm-icon">&#9888;</div>
+      <h2 class="confirm-title pixel-text neon-red-text" id="confirm-title">Are you sure?</h2>
+      <p class="confirm-desc" id="confirm-desc">This action cannot be undone.</p>
+      <div class="confirm-input-group hidden" id="confirm-input-group">
+        <label class="form-label" id="confirm-input-label">Type to confirm:</label>
+        <input type="text" class="form-input" id="confirm-input" autocomplete="off">
+      </div>
+      <div class="confirm-buttons">
+        <button class="confirm-btn confirm-cancel pixel-text" id="confirm-cancel">CANCEL</button>
+        <button class="confirm-btn confirm-action pixel-text" id="confirm-action">CONFIRM</button>
+      </div>
     </div>
   </div>
 

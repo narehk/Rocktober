@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ROCKTOBER — Profile</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/settings.css">
+  <link rel="stylesheet" href="css/profile.css">
+</head>
+<body>
+  <div class="crt-overlay" aria-hidden="true"></div>
+
+  <div class="settings-layout">
+    <!-- Sidebar Navigation -->
+    <nav class="settings-nav">
+      <a href="index.html" class="settings-logo pixel-text neon-pink-text">ROCKTOBER</a>
+      <h2 class="pixel-text settings-nav-title">MY PROFILE</h2>
+      <ul class="settings-nav-list" id="profile-nav">
+        <li><button class="nav-item active" data-section="profile">Profile</button></li>
+        <li><button class="nav-item" data-section="providers">Music Providers</button></li>
+        <li><button class="nav-item" data-section="notifications">My Notifications</button></li>
+        <li><button class="nav-item" data-section="accounts">Connected Accounts</button></li>
+        <li><button class="nav-item" data-section="stats">My Stats</button></li>
+      </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="settings-main">
+      <div class="settings-header">
+        <a href="index.html" class="pixel-text back-link">&larr; Back to Arena</a>
+        <span class="pixel-text settings-user" id="profile-user">KERRY</span>
+      </div>
+
+      <!-- Profile Section -->
+      <section class="settings-section" id="section-profile">
+        <h2 class="section-title neon-pink-text pixel-text">Profile</h2>
+
+        <div class="profile-avatar-section">
+          <div class="profile-avatar" id="profile-avatar">K</div>
+          <div class="avatar-colors" id="avatar-colors">
+            <button class="color-dot active" data-color="#ff2d95" style="background:#ff2d95"></button>
+            <button class="color-dot" data-color="#00e5ff" style="background:#00e5ff"></button>
+            <button class="color-dot" data-color="#b026ff" style="background:#b026ff"></button>
+            <button class="color-dot" data-color="#ffd700" style="background:#ffd700"></button>
+            <button class="color-dot" data-color="#00ff88" style="background:#00ff88"></button>
+            <button class="color-dot" data-color="#ff6600" style="background:#ff6600"></button>
+            <button class="color-dot" data-color="#ff0066" style="background:#ff0066"></button>
+          </div>
+        </div>
+
+        <div class="settings-form">
+          <div class="form-group">
+            <label class="form-label">Display Name</label>
+            <input type="text" id="profile-name" class="form-input" readonly>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tagline</label>
+            <input type="text" id="profile-tagline" class="form-input" placeholder="Rock and roll all night, party every day" maxlength="100" autocomplete="off">
+          </div>
+        </div>
+      </section>
+
+      <!-- Music Providers Section -->
+      <section class="settings-section hidden" id="section-providers">
+        <h2 class="section-title neon-pink-text pixel-text">Music Providers</h2>
+        <p class="section-desc">Connect your music accounts to search and submit songs. Your default provider is used first when searching.</p>
+
+        <div class="provider-list">
+          <div class="provider-card">
+            <div class="provider-icon" style="background:#1DB954">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+            </div>
+            <div class="provider-info">
+              <strong>Spotify</strong>
+              <span class="provider-status" id="spotify-status">Not connected</span>
+            </div>
+            <button class="provider-btn provider-connect" id="spotify-connect">CONNECT</button>
+          </div>
+
+          <div class="provider-card">
+            <div class="provider-icon" style="background:#FF0000">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814z"/><path fill="#FF0000" d="M9.545 15.568V8.432L15.818 12z"/></svg>
+            </div>
+            <div class="provider-info">
+              <strong>YouTube Music</strong>
+              <span class="provider-status">Not connected</span>
+            </div>
+            <button class="provider-btn provider-connect">CONNECT</button>
+          </div>
+
+          <div class="provider-card">
+            <div class="provider-icon" style="background:#FC3C44">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M23.994 6.124a9.23 9.23 0 0 0-.24-2.19c-.317-1.31-1.062-2.31-2.18-3.043A5.022 5.022 0 0 0 19.7.263a10.108 10.108 0 0 0-1.52-.17C17.35.033 16.518.012 15.69 0c-2.27-.033-4.538-.03-6.808.005-.907.011-1.812.04-2.71.134-.67.07-1.322.2-1.946.46-1.16.48-2.04 1.26-2.61 2.39a5.2 5.2 0 0 0-.46 1.67c-.08.56-.12 1.12-.14 1.68-.04 1.38-.03 2.76-.02 4.14.01 1.17.01 2.34.04 3.51.02.73.06 1.46.16 2.18.18 1.33.7 2.48 1.67 3.39.72.68 1.58 1.08 2.54 1.32.6.15 1.21.22 1.83.26 1.01.07 2.02.07 3.03.07 2.06 0 4.12.01 6.18-.01.87-.01 1.74-.03 2.6-.12.77-.08 1.52-.23 2.23-.54 1.15-.51 2-1.31 2.56-2.45.27-.55.42-1.14.5-1.75.1-.75.14-1.5.15-2.25.02-1.83.01-3.66 0-5.49zM16.95 13.34c-.27.24-.57.42-.91.56-.7.27-1.42.36-2.17.28-.24-.03-.47-.09-.69-.19a1.35 1.35 0 0 1-.73-.94c-.09-.35-.03-.68.18-.97.17-.24.4-.42.66-.56.41-.23.85-.37 1.31-.44.36-.05.72-.08 1.08-.08.09 0 .11-.03.11-.12 0-.59 0-1.18-.02-1.77-.01-.2-.07-.25-.27-.22-.63.09-1.24.23-1.82.47-.15.06-.29.14-.44.21l-.01-.02c.03-.07.06-.15.1-.21.31-.47.72-.81 1.21-1.06.53-.26 1.1-.39 1.7-.42.17-.01.22.04.22.21 0 1.56 0 3.12-.01 4.68 0 .12-.03.24-.1.34-.05.07-.11.14-.18.2l-.22.24z"/></svg>
+            </div>
+            <div class="provider-info">
+              <strong>Apple Music</strong>
+              <span class="provider-status">Not connected</span>
+            </div>
+            <button class="provider-btn provider-connect">CONNECT</button>
+          </div>
+
+          <div class="provider-card">
+            <div class="provider-icon" style="background:#FF5500">S</div>
+            <div class="provider-info">
+              <strong>SoundCloud</strong>
+              <span class="provider-status provider-coming-soon">Coming Soon</span>
+            </div>
+            <button class="provider-btn" disabled>CONNECT</button>
+          </div>
+
+          <div class="provider-card">
+            <div class="provider-icon" style="background:#000">T</div>
+            <div class="provider-info">
+              <strong>Tidal</strong>
+              <span class="provider-status provider-coming-soon">Coming Soon</span>
+            </div>
+            <button class="provider-btn" disabled>CONNECT</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- My Notifications Section -->
+      <section class="settings-section hidden" id="section-notifications">
+        <h2 class="section-title neon-pink-text pixel-text">My Notifications</h2>
+        <p class="section-desc">Personal notification preferences. Competition-wide notification settings are in <a href="settings.html" style="color:var(--neon-blue)">Competition Settings</a>.</p>
+        <div class="settings-form">
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <strong>Email Notifications</strong>
+              <p class="toggle-desc">Receive round summaries via email</p>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="notif-email">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <strong>Sound Effects</strong>
+              <p class="toggle-desc">Play sounds for vote confirmations and winner reveals</p>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="notif-sfx" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- Connected Accounts Section -->
+      <section class="settings-section hidden" id="section-accounts">
+        <h2 class="section-title neon-pink-text pixel-text">Connected Accounts</h2>
+        <p class="section-desc">Accounts linked for authentication and identity.</p>
+        <div class="provider-list">
+          <div class="provider-card">
+            <div class="provider-icon" style="background:#24292e">
+              <svg width="20" height="20" viewBox="0 0 16 16" fill="white"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+            </div>
+            <div class="provider-info">
+              <strong>GitHub</strong>
+              <span class="provider-status" id="github-account-status">Not connected</span>
+            </div>
+            <span class="account-connected-label" id="github-connected" style="display:none">Connected</span>
+          </div>
+
+          <div class="provider-card">
+            <div class="provider-icon" style="background:#0078d4">
+              <svg width="20" height="20" viewBox="0 0 21 21" fill="none"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
+            </div>
+            <div class="provider-info">
+              <strong>Microsoft</strong>
+              <span class="provider-status" id="ms-account-status">Not connected</span>
+            </div>
+            <span class="account-connected-label" id="ms-connected" style="display:none">Connected</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- My Stats Section -->
+      <section class="settings-section hidden" id="section-stats">
+        <h2 class="section-title neon-pink-text pixel-text">My Stats</h2>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-value neon-pink-text" id="stat-wins">0</div>
+            <div class="stat-label">Wins</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value neon-blue-text" id="stat-submissions">0</div>
+            <div class="stat-label">Submissions</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value neon-pink-text" id="stat-winrate">0%</div>
+            <div class="stat-label">Win Rate</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value neon-blue-text" id="stat-ranking">#—</div>
+            <div class="stat-label">Ranking</div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="js/profile.js"></script>
+</body>
+</html>

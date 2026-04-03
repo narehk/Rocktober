@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ROCKTOBER — Settings</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/settings.css">
+</head>
+<body>
+  <!-- CRT Scanline Overlay -->
+  <div class="crt-overlay" aria-hidden="true"></div>
+
+  <div class="settings-layout">
+    <!-- Sidebar Navigation -->
+    <nav class="settings-nav">
+      <a href="index.html" class="settings-logo pixel-text neon-pink-text">ROCKTOBER</a>
+      <h2 class="pixel-text settings-nav-title">SETTINGS</h2>
+      <ul class="settings-nav-list" id="settings-nav">
+        <li><button class="nav-item active" data-section="competition">Competition</button></li>
+        <li><button class="nav-item" data-section="notifications">Notifications</button></li>
+        <li><button class="nav-item" data-section="display">Display</button></li>
+        <li><button class="nav-item" data-section="export">Export / Import</button></li>
+      </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="settings-main">
+      <div class="settings-header">
+        <a href="index.html" class="pixel-text back-link">&larr; Back to Arena</a>
+        <span class="pixel-text settings-user" id="settings-user">KERRY</span>
+      </div>
+
+      <!-- Competition Section -->
+      <section class="settings-section" id="section-competition">
+        <h2 class="section-title neon-pink-text pixel-text">Competition Settings</h2>
+        <p class="section-desc">Configure the active competition parameters.</p>
+
+        <div class="settings-form" id="comp-settings-form">
+          <div class="form-group">
+            <label class="form-label">Competition Name</label>
+            <input type="text" id="setting-comp-name" class="form-input" autocomplete="off">
+          </div>
+          <div class="form-row">
+            <div class="form-group form-half">
+              <label class="form-label">Start Date</label>
+              <input type="date" id="setting-comp-start" class="form-input">
+            </div>
+            <div class="form-group form-half">
+              <label class="form-label">End Date</label>
+              <input type="date" id="setting-comp-end" class="form-input">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Timezone</label>
+            <select id="setting-comp-tz" class="form-input">
+              <option value="America/Indiana/Indianapolis">America/Indiana/Indianapolis</option>
+              <option value="America/New_York">America/New_York</option>
+              <option value="America/Chicago">America/Chicago</option>
+              <option value="America/Denver">America/Denver</option>
+              <option value="America/Los_Angeles">America/Los_Angeles</option>
+              <option value="UTC">UTC</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <div class="form-group form-half">
+              <label class="form-label">Submission Open</label>
+              <input type="time" id="setting-sub-open" class="form-input">
+            </div>
+            <div class="form-group form-half">
+              <label class="form-label">Voting Open</label>
+              <input type="time" id="setting-vote-open" class="form-input">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Results Reveal</label>
+            <input type="time" id="setting-results-reveal" class="form-input" style="max-width:50%">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Self-Vote Allowed</label>
+            <label class="toggle">
+              <input type="checkbox" id="setting-self-vote">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <button class="form-submit pixel-text" id="comp-settings-save">SAVE CHANGES</button>
+        </div>
+      </section>
+
+      <!-- Notifications Section -->
+      <section class="settings-section hidden" id="section-notifications">
+        <h2 class="section-title neon-pink-text pixel-text">Notification Settings</h2>
+        <p class="section-desc">Configure Teams webhook and notification types.</p>
+
+        <div class="settings-form">
+          <div class="form-group">
+            <label class="form-label">Teams Webhook URL</label>
+            <input type="url" id="setting-webhook" class="form-input" placeholder="https://outlook.office.com/webhook/..." autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Enable Notifications</label>
+            <label class="toggle">
+              <input type="checkbox" id="setting-notif-enabled">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="notif-types">
+            <label class="notif-check"><input type="checkbox" id="notif-theme" checked> Theme Reveal</label>
+            <label class="notif-check"><input type="checkbox" id="notif-voting" checked> Voting Open</label>
+            <label class="notif-check"><input type="checkbox" id="notif-winner" checked> Winner Announced</label>
+            <label class="notif-check"><input type="checkbox" id="notif-reminder"> Submission Reminder</label>
+          </div>
+          <button class="form-submit pixel-text" id="notif-settings-save">SAVE CHANGES</button>
+        </div>
+      </section>
+
+      <!-- Display Section -->
+      <section class="settings-section hidden" id="section-display">
+        <h2 class="section-title neon-pink-text pixel-text">Display Settings</h2>
+        <p class="section-desc">Customize the visual experience. All effects use CSS — no performance impact.</p>
+
+        <div class="settings-form">
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <strong>CRT Scanlines</strong>
+              <p class="toggle-desc">Retro scanline overlay effect</p>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="display-scanlines" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <strong>Neon Glow</strong>
+              <p class="toggle-desc">Text shadow glow on headings and accents</p>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="display-glow" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <strong>Grid Background</strong>
+              <p class="toggle-desc">Subtle CSS grid pattern on the background</p>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="display-grid" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <strong>Animations</strong>
+              <p class="toggle-desc">Hover effects, transitions, and blinking animations</p>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="display-animations" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- Export/Import Section -->
+      <section class="settings-section hidden" id="section-export">
+        <h2 class="section-title neon-pink-text pixel-text">Export / Import</h2>
+        <p class="section-desc">Back up or restore your competition configuration.</p>
+
+        <div class="settings-form">
+          <div class="export-actions">
+            <button class="export-action-btn pixel-text" id="config-export">EXPORT CONFIG</button>
+            <p class="export-desc">Download competition config as JSON file.</p>
+          </div>
+          <div class="export-divider"></div>
+          <div class="export-actions">
+            <label class="export-action-btn pixel-text import-label" for="config-import-file">IMPORT CONFIG</label>
+            <input type="file" id="config-import-file" accept=".json" class="hidden">
+            <p class="export-desc">Upload a JSON config file to restore settings.</p>
+          </div>
+          <div class="import-preview hidden" id="import-preview">
+            <h4 class="pixel-text" style="font-size:0.45rem;margin-bottom:8px">PREVIEW CHANGES</h4>
+            <pre id="import-diff" class="import-diff"></pre>
+            <div class="import-actions">
+              <button class="confirm-btn confirm-cancel pixel-text" id="import-cancel">CANCEL</button>
+              <button class="form-submit pixel-text" id="import-apply">APPLY</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="js/settings.js"></script>
+</body>
+</html>

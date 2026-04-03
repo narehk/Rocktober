@@ -220,10 +220,13 @@ test.describe('Authentication', () => {
   });
 
   test('shows invite code input when not authenticated', async ({ page }) => {
+    // Auth modal opens via SIGN IN button
+    await page.locator('#auth-show-modal').click();
     await expect(page.locator('#invite-code')).toBeVisible();
   });
 
   test('shows JOIN button', async ({ page }) => {
+    await page.locator('#auth-show-modal').click();
     await expect(page.locator('#auth-submit')).toBeVisible();
     await expect(page.locator('#auth-submit')).toContainText('JOIN');
   });

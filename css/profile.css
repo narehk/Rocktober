@@ -1,0 +1,179 @@
+/* =============================================================
+   PROFILE PAGE — Profile-specific styles (extends settings.css)
+   ============================================================= */
+
+/* --- Avatar Section --- */
+.profile-avatar-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.profile-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--neon-pink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-pixel);
+  font-size: 1.2rem;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.avatar-colors {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.color-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.color-dot:hover {
+  transform: scale(1.15);
+}
+
+.color-dot.active {
+  border-color: #fff;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+}
+
+/* --- Provider List --- */
+.provider-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.provider-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.provider-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-family: var(--font-pixel);
+  font-size: 0.7rem;
+  color: #fff;
+}
+
+.provider-info {
+  flex: 1;
+}
+
+.provider-info strong {
+  display: block;
+  font-size: 0.9rem;
+  margin-bottom: 2px;
+}
+
+.provider-status {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.provider-coming-soon {
+  color: #555;
+  font-style: italic;
+}
+
+.provider-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--neon-blue);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--neon-blue);
+  font-size: 0.45rem;
+  font-family: var(--font-pixel);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.provider-btn:hover:not(:disabled) {
+  background: rgba(0, 229, 255, 0.1);
+}
+
+.provider-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  border-color: #333;
+  color: #555;
+}
+
+.provider-connect {
+  border-color: var(--neon-blue);
+  color: var(--neon-blue);
+}
+
+.provider-default {
+  background: var(--neon-pink);
+  border-color: var(--neon-pink);
+  color: #fff;
+}
+
+.account-connected-label {
+  font-size: 0.75rem;
+  color: #00ff88;
+}
+
+/* --- Stats Grid --- */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.stat-card {
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+}
+
+.stat-value {
+  font-family: var(--font-pixel);
+  font-size: 1.2rem;
+  margin-bottom: 6px;
+}
+
+.stat-label {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.neon-blue-text {
+  color: var(--neon-blue);
+}
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .profile-avatar-section {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

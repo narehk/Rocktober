@@ -59,6 +59,21 @@ const Rocktober = (() => {
     authUser:       $('#auth-user'),
     authName:       $('#auth-name'),
     authLogout:     $('#auth-logout'),
+    // Modals
+    createCompBtn:  $('#create-comp-btn'),
+    createCompOverlay: $('#create-comp-overlay'),
+    createCompForm: $('#create-comp-form'),
+    ccClose:        $('#cc-close'),
+    adminBtn:       $('#admin-btn'),
+    adminOverlay:   $('#admin-overlay'),
+    adminClose:     $('#admin-close'),
+    confirmOverlay: $('#confirm-overlay'),
+    // Auth Modal
+    authShowModal:  $('#auth-show-modal'),
+    authModalOverlay: $('#auth-modal-overlay'),
+    authModalClose: $('#auth-modal-close'),
+    authGitHub:     $('#auth-github'),
+    authMicrosoft:  $('#auth-microsoft'),
   };
 
   // ---------------------
@@ -425,11 +440,12 @@ const Rocktober = (() => {
         return;
       }
 
-      // Success — save session
+      // Success — save session and close modal
       authToken = data.token;
       currentUser = data.name;
       saveSession(currentSlug, data.name, data.token);
       showAuthenticatedUI(data.name);
+      dom.authModalOverlay?.classList.add('hidden');
 
       // Re-render with user identity
       if (currentRound) {
@@ -464,14 +480,14 @@ const Rocktober = (() => {
   }
 
   /**
-   * Show the login prompt.
+   * Show the login prompt (SIGN IN button in header).
    */
   function showLoginUI() {
     dom.authBar.classList.remove('hidden');
     dom.authUser.classList.add('hidden');
     dom.userSelect.classList.add('hidden');
-    dom.authStatus.classList.add('hidden');
-    dom.inviteCode.value = '';
+    dom.authStatus?.classList.add('hidden');
+    if (dom.inviteCode) dom.inviteCode.value = '';
   }
 
   /**
@@ -522,6 +538,38 @@ const Rocktober = (() => {
    * Initialize auth event handlers.
    */
   function initAuthHandlers() {
+    // Auth modal open/close
+    dom.authShowModal?.addEventListener('click', () => {
+      dom.authModalOverlay?.classList.remove('hidden');
+      // Update subtitle with competition name
+      const subtitle = $('#auth-modal-subtitle');
+      if (subtitle && config?.name) {
+        subtitle.textContent = config.name;
+      }
+    });
+
+    dom.authModalClose?.addEventListener('click', () => {
+      dom.authModalOverlay?.classList.add('hidden');
+    });
+
+    dom.authModalOverlay?.addEventListener('click', (e) => {
+      if (e.target === dom.authModalOverlay) {
+        dom.authModalOverlay.classList.add('hidden');
+      }
+    });
+
+    // OAuth buttons
+    dom.authGitHub?.addEventListener('click', () => {
+      if (!currentSlug) return;
+      window.location.href = `${WORKER_URL}/auth/github?competition=${encodeURIComponent(currentSlug)}`;
+    });
+
+    dom.authMicrosoft?.addEventListener('click', () => {
+      if (!currentSlug) return;
+      window.location.href = `${WORKER_URL}/auth/microsoft?competition=${encodeURIComponent(currentSlug)}`;
+    });
+
+    // Invite code submit (in modal)
     dom.authSubmit?.addEventListener('click', () => {
       const code = dom.inviteCode?.value?.trim();
       if (code) authenticate(code);
@@ -682,7 +730,7 @@ const Rocktober = (() => {
       const ctaClass = comp.status === 'active' ? 'cta-active' : 'cta-completed';
 
       return `
-        <button class="comp-card" data-slug="${escapeHTML(comp.slug)}">
+        <button class="comp-card comp-card-${comp.status}" data-slug="${escapeHTML(comp.slug)}">
           <span class="comp-card-status ${statusClass}">${statusLabel}</span>
           <h3 class="comp-card-name">${escapeHTML(comp.name)}</h3>
           <p class="comp-card-dates">${escapeHTML(comp.startDate)} &mdash; ${escapeHTML(comp.endDate)}</p>
@@ -782,8 +830,9 @@ const Rocktober = (() => {
         : '';
 
       const searchQuery = encodeURIComponent(`${sub.title || ''} ${sub.artist || ''}`);
+      const spotifyHref = sub.spotifyUrl || `https://open.spotify.com/search/${searchQuery}`;
       const openLinks = `<div class="open-links">
-        <a href="https://open.spotify.com/search/${searchQuery}" target="_blank" rel="noopener" class="open-link open-spotify">Spotify</a>
+        <a href="${spotifyHref}" target="_blank" rel="noopener" class="open-link open-spotify">Spotify</a>
         <a href="https://music.youtube.com/search?q=${searchQuery}" target="_blank" rel="noopener" class="open-link open-ytm">YT Music</a>
         <a href="https://music.apple.com/us/search?term=${searchQuery}" target="_blank" rel="noopener" class="open-link open-apple">Apple</a>
       </div>`;
@@ -841,7 +890,7 @@ const Rocktober = (() => {
           <div class="song-artist">${escapeHTML(winner.artist)}</div>
           <div class="song-submitter">${escapeHTML(winner.submitter)}</div>
           <div class="open-links">
-            <a href="https://open.spotify.com/search/${searchQuery}" target="_blank" rel="noopener" class="open-link open-spotify">Spotify</a>
+            <a href="${winner.spotifyUrl || `https://open.spotify.com/search/${searchQuery}`}" target="_blank" rel="noopener" class="open-link open-spotify">Spotify</a>
             <a href="https://music.youtube.com/search?q=${searchQuery}" target="_blank" rel="noopener" class="open-link open-ytm">YT Music</a>
             <a href="https://music.apple.com/us/search?term=${searchQuery}" target="_blank" rel="noopener" class="open-link open-apple">Apple</a>
           </div>
@@ -850,19 +899,36 @@ const Rocktober = (() => {
       </div>`;
   }
 
+  let previousStandings = null;
+
   function renderLeaderboard(lb) {
     if (!lb || !lb.standings || lb.standings.length === 0) {
       dom.leaderboard.innerHTML = '<p class="no-data">No standings yet.</p>';
       return;
     }
 
-    dom.leaderboard.innerHTML = lb.standings.map((entry, i) => `
+    dom.leaderboard.innerHTML = lb.standings.map((entry, i) => {
+      // Compute delta arrow from previous standings
+      let arrow = '';
+      if (previousStandings) {
+        const prevIdx = previousStandings.findIndex(s => s.name === entry.name);
+        if (prevIdx >= 0 && prevIdx !== i) {
+          arrow = prevIdx > i
+            ? '<span class="lb-arrow lb-up">&#9650;</span>'
+            : '<span class="lb-arrow lb-down">&#9660;</span>';
+        }
+      }
+
+      return `
       <div class="lb-entry">
         <span class="lb-rank">${i + 1}.</span>
         <span class="lb-name">${escapeHTML(entry.name)}</span>
+        ${arrow}
         <span class="lb-wins">${entry.wins}W</span>
-      </div>
-    `).join('');
+      </div>`;
+    }).join('');
+
+    previousStandings = lb.standings.map(s => ({ ...s }));
   }
 
   function renderCompInfo(cfg) {
@@ -1006,9 +1072,10 @@ const Rocktober = (() => {
     const subs = currentRound.submissions.filter(s => s.title && s.artist);
     if (subs.length === 0) return;
 
-    // Open first track in Spotify search
+    // Open first track in Spotify (direct link if available, search fallback)
     const first = subs[0];
-    window.open(`https://open.spotify.com/search/${encodeURIComponent(`${first.title} ${first.artist}`)}`, '_blank');
+    const spotifyLink = first.spotifyUrl || `https://open.spotify.com/search/${encodeURIComponent(`${first.title} ${first.artist}`)}`;
+    window.open(spotifyLink, '_blank');
 
     if (subs.length > 1) {
       const btn = $('#export-spotify');
@@ -1061,15 +1128,32 @@ const Rocktober = (() => {
     if (comments.length === 0) {
       list.innerHTML = '<p class="no-comments">No comments yet. Be the first!</p>';
     } else {
+      // Generate consistent avatar colors from name
+      const avatarColors = ['#ff2d95', '#00e5ff', '#b026ff', '#ffd700', '#39ff14', '#ff6600', '#ff0066'];
+      function getAvatarColor(name) {
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        return avatarColors[Math.abs(hash) % avatarColors.length];
+      }
+
       list.innerHTML = comments.map(c => {
         const canDelete = currentUser && c.author === currentUser;
         const deleteBtn = canDelete
           ? `<button class="comment-delete" data-id="${escapeHTML(c.id || '')}" aria-label="Delete comment">&times;</button>`
           : '';
+        const color = getAvatarColor(c.author || '');
+        const initial = (c.author || '?').charAt(0).toUpperCase();
+        const timeStr = c.timestamp ? new Date(c.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
         return `
         <div class="comment-item">
-          <span class="comment-author">${escapeHTML(c.author)}</span>
-          <span class="comment-text">${escapeHTML(c.text)}</span>
+          <span class="comment-avatar" style="background:${color}">${initial}</span>
+          <div class="comment-body">
+            <div class="comment-meta">
+              <span class="comment-author">${escapeHTML(c.author)}</span>
+              ${timeStr ? `<span class="comment-time">${timeStr}</span>` : ''}
+            </div>
+            <span class="comment-text">${escapeHTML(c.text)}</span>
+          </div>
           ${deleteBtn}
         </div>`;
       }).join('');
@@ -1476,6 +1560,7 @@ const Rocktober = (() => {
       config = await loadConfig(slug);
       renderCompInfo(config);
       initAuth(config.members);
+      checkAdminAccess();
 
       // Update tagline with competition name
       $('.tagline').textContent = config.name || slug;
@@ -1571,6 +1656,499 @@ const Rocktober = (() => {
   }
 
   // ---------------------
+  // Playlist Export Modal
+  // ---------------------
+
+  function initPlaylistModal() {
+    const overlay = $('#playlist-overlay');
+    const closeBtn = $('#playlist-close');
+
+    $('#export-create-playlist')?.addEventListener('click', () => openPlaylistModal());
+
+    closeBtn?.addEventListener('click', () => overlay?.classList.add('hidden'));
+    overlay?.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.classList.add('hidden');
+    });
+
+    // Create round playlist
+    $('#playlist-create-round')?.addEventListener('click', () => createPlaylist('round'));
+    // Create season playlist
+    $('#playlist-create-season')?.addEventListener('click', () => createPlaylist('season'));
+
+    // Handle Spotify token from OAuth callback
+    const hash = new URLSearchParams(window.location.hash.slice(1));
+    const spotifyToken = hash.get('spotify_token');
+    const spotifyRefresh = hash.get('spotify_refresh');
+    if (spotifyToken) {
+      localStorage.setItem('rocktober-spotify-token', spotifyToken);
+      if (spotifyRefresh) localStorage.setItem('rocktober-spotify-refresh', spotifyRefresh);
+      // Clean URL
+      const comp = hash.get('competition');
+      if (comp) window.location.hash = `competition=${comp}`;
+    }
+  }
+
+  function openPlaylistModal() {
+    if (!currentRound || !currentSlug) return;
+    const overlay = $('#playlist-overlay');
+    overlay?.classList.remove('hidden');
+
+    // Populate round info
+    const subs = currentRound.submissions || [];
+    $('#playlist-round-title').textContent = `Round ${viewingRoundNum} Playlist`;
+    $('#playlist-track-count').textContent = `${subs.length} song${subs.length !== 1 ? 's' : ''}`;
+    $('#playlist-theme').textContent = currentRound.theme ? `"${currentRound.theme}"` : '';
+    $('#playlist-name').value = `${config?.name || currentSlug} — Round ${viewingRoundNum}: ${currentRound.theme || ''}`.trim();
+
+    // Render track list
+    const tracksEl = $('#playlist-tracks');
+    tracksEl.innerHTML = subs.map((s, i) => `
+      <div class="playlist-track">
+        <span class="playlist-track-num">${i + 1}</span>
+        <img class="playlist-track-art" src="${s.albumArt || ''}" alt="" onerror="this.style.display='none'">
+        <div class="playlist-track-info">
+          <div class="playlist-track-title">${escapeHTML(s.title)}</div>
+          <div class="playlist-track-artist">${escapeHTML(s.artist)} &middot; ${escapeHTML(s.submitter)}</div>
+        </div>
+      </div>
+    `).join('');
+
+    // Season stats
+    const totalRounds = config?.totalRounds || 0;
+    $('#season-track-count').textContent = `${subs.length}+ songs · ${totalRounds} rounds`;
+  }
+
+  async function createPlaylist(type) {
+    const spotifyToken = localStorage.getItem('rocktober-spotify-token');
+    if (!spotifyToken) {
+      // Need to connect Spotify first
+      window.location.href = `${WORKER_URL}/auth/spotify?competition=${encodeURIComponent(currentSlug)}`;
+      return;
+    }
+
+    const btnId = type === 'round' ? 'playlist-create-round' : 'playlist-create-season';
+    const btn = $(`#${btnId}`);
+    btn.disabled = true;
+    const origText = btn.textContent;
+    btn.textContent = 'CREATING...';
+
+    try {
+      const body = {
+        competition: currentSlug,
+        type,
+        spotifyToken,
+        includeAll: $('#season-include-all')?.checked ?? true,
+      };
+
+      if (type === 'round') {
+        body.roundNum = viewingRoundNum;
+        body.name = $('#playlist-name')?.value || null;
+      }
+
+      const res = await fetch(`${WORKER_URL}/playlist/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          // Token expired — re-auth
+          localStorage.removeItem('rocktober-spotify-token');
+          window.location.href = `${WORKER_URL}/auth/spotify?competition=${encodeURIComponent(currentSlug)}`;
+          return;
+        }
+        throw new Error(data.error || 'Playlist creation failed');
+      }
+
+      btn.textContent = `CREATED! (${data.trackCount} tracks)`;
+      setTimeout(() => { btn.textContent = origText; }, 3000);
+
+      // Open in Spotify
+      if (data.playlistUrl) window.open(data.playlistUrl, '_blank');
+    } catch (err) {
+      alert(`Error: ${err.message}`);
+      btn.textContent = origText;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // ---------------------
+  // Confirm Dialog (reusable)
+  // ---------------------
+
+  let confirmResolver = null;
+
+  function showConfirmDialog({ title, desc, confirmLabel, requireInput, inputLabel }) {
+    const overlay = dom.confirmOverlay;
+    const titleEl = $('#confirm-title');
+    const descEl = $('#confirm-desc');
+    const actionBtn = $('#confirm-action');
+    const cancelBtn = $('#confirm-cancel');
+    const inputGroup = $('#confirm-input-group');
+    const inputEl = $('#confirm-input');
+    const inputLabelEl = $('#confirm-input-label');
+
+    titleEl.textContent = title || 'Are you sure?';
+    descEl.textContent = desc || 'This action cannot be undone.';
+    actionBtn.textContent = confirmLabel || 'CONFIRM';
+    actionBtn.disabled = !!requireInput;
+
+    if (requireInput) {
+      inputGroup.classList.remove('hidden');
+      inputLabelEl.textContent = inputLabel || 'Type to confirm:';
+      inputEl.value = '';
+      inputEl.oninput = () => {
+        actionBtn.disabled = inputEl.value.trim() !== requireInput;
+      };
+    } else {
+      inputGroup.classList.add('hidden');
+    }
+
+    overlay.classList.remove('hidden');
+
+    return new Promise((resolve) => {
+      confirmResolver = resolve;
+      actionBtn.onclick = () => {
+        overlay.classList.add('hidden');
+        confirmResolver = null;
+        resolve(true);
+      };
+      cancelBtn.onclick = () => {
+        overlay.classList.add('hidden');
+        confirmResolver = null;
+        resolve(false);
+      };
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+          overlay.classList.add('hidden');
+          confirmResolver = null;
+          resolve(false);
+        }
+      }, { once: true });
+    });
+  }
+
+  // ---------------------
+  // Create Competition Modal
+  // ---------------------
+
+  function initCreateCompModal() {
+    dom.createCompBtn?.addEventListener('click', () => {
+      dom.createCompOverlay.classList.remove('hidden');
+    });
+
+    dom.ccClose?.addEventListener('click', () => {
+      dom.createCompOverlay.classList.add('hidden');
+    });
+
+    dom.createCompOverlay?.addEventListener('click', (e) => {
+      if (e.target === dom.createCompOverlay) {
+        dom.createCompOverlay.classList.add('hidden');
+      }
+    });
+
+    // Day picker toggle
+    const dayPicker = $('#cc-days');
+    dayPicker?.addEventListener('click', (e) => {
+      if (e.target.classList.contains('day-btn')) {
+        e.target.classList.toggle('active');
+      }
+    });
+
+    // Form submit
+    dom.createCompForm?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const submitBtn = $('#cc-submit');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'CREATING...';
+
+      const name = $('#cc-name').value.trim();
+      const startDate = $('#cc-start').value;
+      const endDate = $('#cc-end').value;
+      const timezone = $('#cc-timezone').value;
+      const activeDays = [...$$('#cc-days .day-btn.active')].map(b => b.dataset.day);
+      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+      try {
+        const adminToken = localStorage.getItem('rocktober-admin-token');
+        if (!adminToken) {
+          const token = prompt('Enter admin token:');
+          if (!token) { submitBtn.disabled = false; submitBtn.textContent = 'CREATE COMPETITION'; return; }
+          localStorage.setItem('rocktober-admin-token', token);
+        }
+
+        const res = await fetch(`${WORKER_URL}/competition/create`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('rocktober-admin-token')}`,
+          },
+          body: JSON.stringify({ name, slug, startDate, endDate, timezone, competitionDays: activeDays, admins: [] }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to create competition');
+
+        dom.createCompOverlay.classList.add('hidden');
+        dom.createCompForm.reset();
+
+        // Refresh registry and enter the new competition
+        registry = await loadRegistry();
+        await renderPicker(registry.competitions);
+        enterCompetition(slug);
+      } catch (err) {
+        alert(`Error: ${err.message}`);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'CREATE COMPETITION';
+      }
+    });
+  }
+
+  // ---------------------
+  // Admin Panel Modal
+  // ---------------------
+
+  function getAdminToken() {
+    let token = localStorage.getItem('rocktober-admin-token');
+    if (!token) {
+      token = prompt('Enter admin token:');
+      if (token) localStorage.setItem('rocktober-admin-token', token);
+    }
+    return token;
+  }
+
+  function initAdminPanel() {
+    dom.adminBtn?.addEventListener('click', () => {
+      openAdminPanel();
+    });
+
+    dom.adminClose?.addEventListener('click', () => {
+      dom.adminOverlay.classList.add('hidden');
+    });
+
+    dom.adminOverlay?.addEventListener('click', (e) => {
+      if (e.target === dom.adminOverlay) {
+        dom.adminOverlay.classList.add('hidden');
+      }
+    });
+
+    // Advance phase
+    $('#admin-advance')?.addEventListener('click', async () => {
+      const token = getAdminToken();
+      if (!token) return;
+
+      try {
+        const res = await fetch(`${WORKER_URL}/competition/advance-phase`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ competition: currentSlug, day: viewingRoundNum }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        // Refresh the round display
+        await refreshRound(viewingRoundNum);
+        updateAdminRoundInfo();
+      } catch (err) {
+        alert(`Error: ${err.message}`);
+      }
+    });
+
+    // Phase direct-set buttons
+    $('#phase-buttons')?.addEventListener('click', async (e) => {
+      const btn = e.target.closest('.phase-btn');
+      if (!btn) return;
+      const targetPhase = btn.dataset.phase;
+      const token = getAdminToken();
+      if (!token) return;
+
+      try {
+        const res = await fetch(`${WORKER_URL}/competition/advance-phase`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ competition: currentSlug, day: viewingRoundNum, targetPhase }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        await refreshRound(viewingRoundNum);
+        updateAdminRoundInfo();
+      } catch (err) {
+        alert(`Error: ${err.message}`);
+      }
+    });
+
+    // Reset competition
+    $('#admin-reset')?.addEventListener('click', async () => {
+      const compName = config?.name || currentSlug;
+      const confirmed = await showConfirmDialog({
+        title: 'Reset Competition?',
+        desc: 'This will clear all submissions, votes, and comments. Config and members will be kept. This cannot be undone.',
+        confirmLabel: 'RESET',
+        requireInput: compName,
+        inputLabel: 'Type competition name to confirm:',
+      });
+
+      if (!confirmed) return;
+
+      const token = getAdminToken();
+      if (!token) return;
+
+      try {
+        const res = await fetch(`${WORKER_URL}/competition/reset`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ competition: currentSlug }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert(`Competition reset! ${data.roundsReset} rounds cleared.`);
+        dom.adminOverlay.classList.add('hidden');
+        // Reload competition
+        enterCompetition(currentSlug);
+      } catch (err) {
+        alert(`Error: ${err.message}`);
+      }
+    });
+
+    // Add member
+    $('#admin-add-member')?.addEventListener('click', async () => {
+      const input = $('#admin-member-name');
+      const name = input.value.trim();
+      if (!name) return;
+
+      const token = getAdminToken();
+      if (!token) return;
+
+      try {
+        const res = await fetch(`${WORKER_URL}/competition/members`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ competition: currentSlug, action: 'add', members: [name] }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        input.value = '';
+        // Refresh config and re-render member list
+        config = await loadConfig(currentSlug);
+        renderAdminMembers();
+      } catch (err) {
+        alert(`Error: ${err.message}`);
+      }
+    });
+
+    $('#admin-member-name')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        $('#admin-add-member')?.click();
+      }
+    });
+  }
+
+  function openAdminPanel() {
+    dom.adminOverlay.classList.remove('hidden');
+    updateAdminRoundInfo();
+    renderAdminMembers();
+  }
+
+  function updateAdminRoundInfo() {
+    if (!currentRound || !config) return;
+    const roundName = `Round ${viewingRoundNum} — ${currentRound.theme || 'No theme'}`;
+    const phase = getCurrentPhase(currentRound, config);
+
+    $('#admin-round-name').textContent = roundName;
+    $('#admin-phase-value').textContent = phase;
+
+    // Update phase button states
+    $$('.phase-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.phase === phase);
+    });
+  }
+
+  function renderAdminMembers() {
+    const list = $('#admin-member-list');
+    if (!list || !config) return;
+
+    const members = config.members || [];
+    const admins = config.admins || [];
+
+    list.innerHTML = members.map(m => {
+      const isAdmin = admins.includes(m.name);
+      return `
+        <div class="member-row">
+          <span class="member-name">${escapeHTML(m.name)}${isAdmin ? ' <span class="member-role">ADMIN</span>' : ''}</span>
+          ${!isAdmin ? `<button class="member-remove" data-name="${escapeHTML(m.name)}" title="Remove member">&times;</button>` : ''}
+        </div>`;
+    }).join('');
+
+    // Remove member handlers
+    list.querySelectorAll('.member-remove').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const name = btn.dataset.name;
+        const confirmed = await showConfirmDialog({
+          title: `Remove ${name}?`,
+          desc: `This will remove ${name} from the competition. Their existing submissions will remain.`,
+          confirmLabel: 'REMOVE',
+        });
+        if (!confirmed) return;
+
+        const token = getAdminToken();
+        if (!token) return;
+
+        try {
+          const res = await fetch(`${WORKER_URL}/competition/members`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({ competition: currentSlug, action: 'remove', members: [name] }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+
+          config = await loadConfig(currentSlug);
+          renderAdminMembers();
+        } catch (err) {
+          alert(`Error: ${err.message}`);
+        }
+      });
+    });
+  }
+
+  /**
+   * Show admin button if user has admin token or is in config.admins.
+   */
+  function checkAdminAccess() {
+    const adminToken = localStorage.getItem('rocktober-admin-token');
+    const isAdmin = config?.admins?.includes(currentUser);
+    if (adminToken || isAdmin) {
+      dom.adminBtn?.classList.remove('hidden');
+    } else {
+      dom.adminBtn?.classList.add('hidden');
+    }
+  }
+
+  // ---------------------
   // App Lifecycle
   // ---------------------
 
@@ -1583,6 +2161,9 @@ const Rocktober = (() => {
     initSocialHandlers();
     initPlayback();
     initSettings();
+    initCreateCompModal();
+    initAdminPanel();
+    initPlaylistModal();
 
     // Back button
     dom.backBtn?.addEventListener('click', () => {
@@ -1611,8 +2192,30 @@ const Rocktober = (() => {
       dom.pickerGrid.innerHTML = '<p class="no-data">Could not load competitions.</p>';
     }
 
-    // Check if URL already has a competition selected
-    const slug = getSlugFromURL();
+    // Check for OAuth callback params in URL fragment
+    const hashParams = new URLSearchParams(window.location.hash.slice(1));
+    const oauthToken = hashParams.get('token');
+    const oauthName = hashParams.get('name');
+    const oauthError = hashParams.get('auth_error');
+    const slug = hashParams.get('competition') || getSlugFromURL();
+
+    if (oauthToken && oauthName && slug) {
+      // OAuth callback — save session and enter competition
+      saveSession(slug, oauthName, oauthToken);
+      // Clean the URL fragment (remove token/name, keep competition)
+      window.location.hash = `competition=${slug}`;
+    }
+
+    if (oauthError && slug) {
+      // OAuth failed — show error and clean URL
+      console.error('OAuth error:', oauthError);
+      window.location.hash = `competition=${slug}`;
+      // Will show after entering competition
+      setTimeout(() => {
+        showAuthStatus(decodeURIComponent(oauthError));
+      }, 1000);
+    }
+
     if (slug) {
       // Verify slug exists in registry
       const exists = registry?.competitions?.some(c => c.slug === slug);
