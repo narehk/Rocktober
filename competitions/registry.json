@@ -29,7 +29,7 @@
       "status": "active",
       "memberCount": 0,
       "totalRounds": 4,
-      "description": "Dogfood Test ÃÂ¢ÃÂÃÂ 4 rounds"
+      "description": "Dogfood Test ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ 4 rounds"
     },
     {
       "slug": "human-tets",
@@ -39,7 +39,7 @@
       "status": "active",
       "memberCount": 0,
       "totalRounds": 21,
-      "description": "Human Tets Ã¢ÂÂ 21 rounds"
+      "description": "Human Tets ÃÂ¢ÃÂÃÂ 21 rounds"
     },
     {
       "slug": "human-testing-lala",
@@ -49,7 +49,7 @@
       "status": "active",
       "memberCount": 0,
       "totalRounds": 5,
-      "description": "human testing lala â 5 rounds"
+      "description": "human testing lala Ã¢ÂÂ 5 rounds"
     },
     {
       "slug": "testing-again",
@@ -59,7 +59,17 @@
       "status": "active",
       "memberCount": 0,
       "totalRounds": 10,
-      "description": "testing again — 10 rounds"
+      "description": "testing again â 10 rounds"
+    },
+    {
+      "slug": "test-create-2",
+      "name": "Test Create 2",
+      "startDate": "2026-04-14",
+      "endDate": "2026-04-18",
+      "status": "active",
+      "memberCount": 0,
+      "totalRounds": 4,
+      "description": "Test Create 2 — 4 rounds"
     }
   ]
 }
