@@ -29,7 +29,7 @@
       "status": "active",
       "memberCount": 0,
       "totalRounds": 4,
-      "description": "Dogfood Test Ã¢ÂÂ 4 rounds"
+      "description": "Dogfood Test ÃÂ¢ÃÂÃÂ 4 rounds"
     },
     {
       "slug": "human-tets",
@@ -39,7 +39,7 @@
       "status": "active",
       "memberCount": 0,
       "totalRounds": 21,
-      "description": "Human Tets â 21 rounds"
+      "description": "Human Tets Ã¢ÂÂ 21 rounds"
     },
     {
       "slug": "human-testing-lala",
@@ -49,7 +49,17 @@
       "status": "active",
       "memberCount": 0,
       "totalRounds": 5,
-      "description": "human testing lala — 5 rounds"
+      "description": "human testing lala â 5 rounds"
+    },
+    {
+      "slug": "testing-again",
+      "name": "testing again",
+      "startDate": "2026-01-13",
+      "endDate": "2026-01-26",
+      "status": "active",
+      "memberCount": 0,
+      "totalRounds": 10,
+      "description": "testing again — 10 rounds"
     }
   ]
 }
