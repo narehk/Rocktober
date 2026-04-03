@@ -63,6 +63,47 @@ tests/
 - **Phase coverage**: Fixture rounds cover all phases (submission, voting, results)
 - **Reset between runs**: Tests clear localStorage and start fresh
 
+## Dogfood-First Testing
+
+**Test data must flow through the system, not be pre-loaded.**
+
+When testing a feature end-to-end, data should be created using the same flows a real user would use — UI forms, Worker API endpoints, auth flows. Pre-seeded JSON files are acceptable for unit/visual regression tests, but integration and E2E tests must exercise the actual write path.
+
+### Why This Matters
+
+Pre-loaded test data masks broken write paths. A submission form might look correct with seeded data but fail completely when the Worker `/submit` endpoint has a bug, because no test ever called that endpoint.
+
+### Implementation Order Consequence
+
+Features that create data must be built and working BEFORE features that display data can be properly tested:
+
+```
+Create Competition → Add Members → Auth (join) → Submit Songs → Vote → Tally → View Results
+```
+
+If "Create Competition" doesn't work through the system, everything downstream is tested against fake data that never proved the write path works.
+
+### Acceptable Pre-Loading
+
+| Context | Pre-loaded OK? | Why |
+|---------|---------------|-----|
+| Visual regression baselines | Yes | Testing pixel output, not data flow |
+| Component screenshot tests | Yes | Testing layout, not API |
+| Schema validation | Yes | Testing structure, not creation |
+| E2E lifecycle tests | **No** | Must exercise the full write path |
+| Integration tests | **No** | Must hit real Worker endpoints |
+| Manual QA / demo | **No** | Must use Create Competition flow |
+
+### Pragmatic Caveat
+
+Dogfood-first is the goal, not a gate. There are situations where synthetic/seeded data is necessary to make progress:
+
+- **The write path doesn't exist yet** — If Create Competition isn't built, you still need data to develop and test the UI that displays competitions. Seed it, note the gap, build the write path, then re-test through the system.
+- **Reproducing edge cases** — Certain states (tied votes, 31 rounds of data, unicode member names) may be impractical to create through the UI every time. Synthetic fixtures for these are fine.
+- **Parallel workstreams** — A frontend developer shouldn't be blocked waiting for a backend endpoint to test their layout. Seed data, ship the UI, wire up the real endpoint, then verify end-to-end.
+
+The rule is: **know the difference between "we tested this through the system" and "we tested this against synthetic data."** Both are valid — but only the first proves the full path works. Don't let synthetic data give false confidence that the write path is solid when it's never been exercised.
+
 ## Visual Regression Standards
 
 ### Viewport Sizes

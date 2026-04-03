@@ -510,7 +510,8 @@ body {
 /* --- Open In Links --- */
 .open-links {
   display: flex;
-  gap: 0.4rem;
+  flex-wrap: wrap;
+  gap: 0.3rem;
   margin-top: 0.35rem;
 }
 
@@ -1269,7 +1270,7 @@ body {
 
 .reaction-count {
   font-family: var(--font-pixel);
-  font-size: 0.35rem;
+  font-size: 0.55rem;
   color: inherit;
 }
 
@@ -1398,6 +1399,52 @@ body {
   border-top: 1px solid rgba(255, 255, 255, 0.05);
   padding-top: 0.5rem;
   margin-top: 0.25rem;
+}
+
+.comp-card-theme {
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  background: rgba(255, 45, 149, 0.08);
+  border-left: 2px solid var(--neon-pink);
+  border-radius: 2px;
+}
+
+.comp-card-champion {
+  margin-top: 0.5rem;
+}
+
+.comp-card-cta {
+  display: inline-block;
+  font-family: var(--font-pixel);
+  font-size: 0.4rem;
+  padding: 0.4rem 0.8rem;
+  margin-top: 0.75rem;
+  border-radius: 2px;
+  letter-spacing: 1px;
+  transition: box-shadow 0.2s;
+}
+
+.cta-active {
+  background: var(--neon-pink);
+  color: #fff;
+  box-shadow: 0 0 8px rgba(255, 45, 149, 0.4);
+}
+
+.comp-card:hover .cta-active {
+  box-shadow: 0 0 15px rgba(255, 45, 149, 0.6);
+}
+
+.cta-completed {
+  background: var(--chrome-dark);
+  color: var(--chrome-light);
+  border: 1px solid var(--chrome-mid);
+}
+
+.comp-card:hover .cta-completed {
+  border-color: var(--gold);
+  color: var(--gold);
 }
 
 /* --- Competition Nav (back button) --- */

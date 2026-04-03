@@ -636,17 +636,50 @@ const Rocktober = (() => {
   // Rendering — Picker
   // ---------------------
 
-  function renderPicker(competitions) {
+  async function renderPicker(competitions) {
     if (!competitions || competitions.length === 0) {
       dom.pickerGrid.innerHTML = '<p class="no-data">No competitions available.</p>';
       return;
     }
 
-    dom.pickerGrid.innerHTML = competitions.map(comp => {
+    // Fetch enrichment data in parallel (config for active, leaderboard for completed)
+    const enrichments = await Promise.all(competitions.map(async (comp) => {
+      const result = { theme: null, champion: null };
+      try {
+        if (comp.status === 'active') {
+          const cfg = await loadConfig(comp.slug);
+          const roundNum = getCurrentRoundNumber(cfg);
+          if (roundNum > 0 && cfg.themes && cfg.themes[roundNum - 1]) {
+            result.theme = cfg.themes[roundNum - 1];
+          }
+        } else if (comp.status === 'completed') {
+          const lb = await loadLeaderboard(comp.slug);
+          if (lb.standings && lb.standings.length > 0) {
+            const top = lb.standings[0];
+            result.champion = `${top.name} (${top.wins} win${top.wins !== 1 ? 's' : ''})`;
+          }
+        }
+      } catch { /* enrichment is optional — render card without it */ }
+      return result;
+    }));
+
+    dom.pickerGrid.innerHTML = competitions.map((comp, i) => {
       const statusClass = comp.status === 'active' ? 'status-active' :
                           comp.status === 'completed' ? 'status-completed' :
                           'status-upcoming';
       const statusLabel = comp.status.toUpperCase();
+      const { theme, champion } = enrichments[i];
+
+      const themeHtml = theme
+        ? `<p class="comp-card-theme"><span class="pixel-text" style="font-size:0.4rem;color:var(--neon-pink)">TODAY'S THEME:</span> ${escapeHTML(theme)}</p>`
+        : '';
+      const championHtml = champion
+        ? `<p class="comp-card-champion pixel-text" style="font-size:0.4rem;color:var(--gold)">&#127942; Champion: ${escapeHTML(champion)}</p>`
+        : '';
+      const ctaLabel = comp.status === 'active' ? 'ENTER THE ARENA'
+                     : comp.status === 'completed' ? 'VIEW RESULTS'
+                     : 'COMING SOON';
+      const ctaClass = comp.status === 'active' ? 'cta-active' : 'cta-completed';
 
       return `
         <button class="comp-card" data-slug="${escapeHTML(comp.slug)}">
@@ -654,7 +687,9 @@ const Rocktober = (() => {
           <h3 class="comp-card-name">${escapeHTML(comp.name)}</h3>
           <p class="comp-card-dates">${escapeHTML(comp.startDate)} &mdash; ${escapeHTML(comp.endDate)}</p>
           <p class="comp-card-meta">${comp.memberCount} members &middot; ${comp.totalRounds} rounds</p>
-          ${comp.description ? `<p class="comp-card-desc">${escapeHTML(comp.description)}</p>` : ''}
+          ${themeHtml}
+          ${championHtml}
+          <span class="comp-card-cta ${ctaClass}">${ctaLabel}</span>
         </button>`;
     }).join('');
   }
@@ -738,7 +773,7 @@ const Rocktober = (() => {
       }
 
       const voteCount = phase === 'results' && sub.votes !== undefined
-        ? `<span class="neon-blue-text pixel-text" style="font-size:0.5rem;margin-top:0.5rem;display:inline-block">${sub.votes} VOTES</span>`
+        ? `<span class="neon-blue-text pixel-text" style="font-size:0.5rem;margin-top:0.5rem;display:inline-block">${sub.votes} ${sub.votes === 1 ? 'VOTE' : 'VOTES'}</span>`
         : '';
 
       const previewUrl = sub.previewUrl || '';
@@ -783,16 +818,36 @@ const Rocktober = (() => {
 
     const winner = round.submissions?.find(s => s.submitter === round.winner);
     dom.winnerDisplay.classList.remove('hidden');
-    dom.winnerCard.innerHTML = winner
-      ? `<div class="song-card" style="border-color:var(--gold)">
-           <img class="album-art" src="${winner.albumArt || ''}" alt="${escapeHTML(winner.title)}">
-           <div class="song-info">
-             <div class="song-title" style="color:var(--gold)">${escapeHTML(winner.title)}</div>
-             <div class="song-artist">${escapeHTML(winner.artist)}</div>
-             <div class="song-submitter">${escapeHTML(winner.submitter)}</div>
-           </div>
-         </div>`
-      : `<p class="neon-text">${escapeHTML(round.winner)}</p>`;
+    if (!winner) {
+      dom.winnerCard.innerHTML = `<p class="neon-text">${escapeHTML(round.winner)}</p>`;
+      return;
+    }
+    const searchQuery = encodeURIComponent(`${winner.title || ''} ${winner.artist || ''}`);
+    const previewUrl = winner.previewUrl || '';
+    const playBtn = previewUrl
+      ? `<button class="play-btn" data-preview="${escapeHTML(previewUrl)}" data-track="${escapeHTML(winner.trackId || '')}" aria-label="Play preview">▶</button>`
+      : '';
+    dom.winnerCard.innerHTML = `
+      <div class="song-card winner-highlight" style="border-color:var(--gold)">
+        <div class="album-art-wrap">
+          <img class="album-art"
+               src="${winner.albumArt || ''}"
+               alt="${escapeHTML(winner.title || 'Album art')}"
+               onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 80 80%22><rect fill=%22%23111%22 width=%2280%22 height=%2280%22/><text x=%2240%22 y=%2244%22 text-anchor=%22middle%22 fill=%22%23333%22 font-size=%2212%22>?</text></svg>'">
+          ${playBtn}
+        </div>
+        <div class="song-info">
+          <div class="song-title" style="color:var(--gold)">${escapeHTML(winner.title)}</div>
+          <div class="song-artist">${escapeHTML(winner.artist)}</div>
+          <div class="song-submitter">${escapeHTML(winner.submitter)}</div>
+          <div class="open-links">
+            <a href="https://open.spotify.com/search/${searchQuery}" target="_blank" rel="noopener" class="open-link open-spotify">Spotify</a>
+            <a href="https://music.youtube.com/search?q=${searchQuery}" target="_blank" rel="noopener" class="open-link open-ytm">YT Music</a>
+            <a href="https://music.apple.com/us/search?term=${searchQuery}" target="_blank" rel="noopener" class="open-link open-apple">Apple</a>
+          </div>
+          ${winner.votes !== undefined ? `<span class="neon-blue-text winner-votes" style="font-family:var(--font-pixel);font-size:0.5rem;margin-top:0.5rem;display:inline-block">${winner.votes} ${winner.votes === 1 ? 'VOTE' : 'VOTES'}</span>` : ''}
+        </div>
+      </div>`;
   }
 
   function renderLeaderboard(lb) {
@@ -1548,7 +1603,7 @@ const Rocktober = (() => {
     // Load registry
     try {
       registry = await loadRegistry();
-      renderPicker(registry.competitions);
+      await renderPicker(registry.competitions);
       dom.pickerLoading.classList.add('hidden');
     } catch (err) {
       console.error('Registry load failed:', err);
