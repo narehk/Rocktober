@@ -20,6 +20,16 @@
       "memberCount": 5,
       "totalRounds": 23,
       "description": "The original Rocktober playlist battle"
+    },
+    {
+      "slug": "dogfood-test",
+      "name": "Dogfood Test",
+      "startDate": "2026-04-07",
+      "endDate": "2026-04-11",
+      "status": "active",
+      "memberCount": 0,
+      "totalRounds": 4,
+      "description": "Dogfood Test — 4 rounds"
     }
   ]
 }
