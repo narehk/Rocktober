@@ -781,7 +781,11 @@ async function readGitHubFile(repo, path, token) {
  */
 async function writeGitHubFile(repo, path, content, sha, message, token) {
   const url = `https://api.github.com/repos/${repo}/contents/${path}`;
-  const encoded = btoa(JSON.stringify(content, null, 2));
+  // Use TextEncoder for safe base64 encoding (btoa fails on non-Latin1 in Workers)
+  const jsonStr = JSON.stringify(content, null, 2);
+  const bytes = new TextEncoder().encode(jsonStr);
+  const binStr = Array.from(bytes, b => String.fromCharCode(b)).join('');
+  const encoded = btoa(binStr);
 
   const body = {
     message,
