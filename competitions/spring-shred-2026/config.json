@@ -23,6 +23,11 @@
     "Fri"
   ],
   "admins": [],
-  "members": [],
+  "members": [
+    {
+      "name": "Kerry",
+      "order": 1
+    }
+  ],
   "themes": []
 }
