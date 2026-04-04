@@ -1896,10 +1896,27 @@ const Rocktober = (() => {
         dom.createCompOverlay.classList.add('hidden');
         dom.createCompForm.reset();
 
-        // Refresh registry and enter the new competition
-        registry = await loadRegistry();
-        await renderPicker(registry.competitions);
-        enterCompetition(slug);
+        // Enter the new competition using data from the create response
+        // (GitHub Pages won't have the files yet — skip static fetch)
+        currentSlug = slug;
+        setSlugInURL(slug);
+        showCompetitionScreen();
+        config = data.competition;
+        renderCompInfo(config);
+        initAuth(config.members);
+        checkAdminAccess();
+        $('.tagline').textContent = config.name || slug;
+
+        // Show "not started" or first round depending on dates
+        dom.loading.classList.add('hidden');
+        dom.themeDisplay.classList.remove('hidden');
+        dom.themeTitle.textContent = config.themes?.[0] || 'READY TO GO';
+        dom.roundBadge.textContent = 'ROUND 01';
+        dom.phaseBadge.textContent = 'submission';
+        dom.phaseBadge.className = 'phase-badge submission';
+        dom.submissionsGrid.classList.remove('hidden');
+        dom.submissionsGrid.innerHTML = '<p class="no-data">No submissions yet. Share the invite code to get started!</p>';
+        dom.leaderboard.innerHTML = '<p class="no-data">No standings yet.</p>';
       } catch (err) {
         alert(`Error: ${err.message}`);
       } finally {
