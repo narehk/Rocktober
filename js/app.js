@@ -79,6 +79,7 @@ const Rocktober = (() => {
   // ---------------------
   // State
   // ---------------------
+  let cacheBustTs = null; // Set after Worker writes to bypass CDN cache on next fetch
   let registry = null;
   let config = null;
   let currentRound = null;
@@ -135,9 +136,18 @@ const Rocktober = (() => {
   // ---------------------
 
   async function fetchJSON(path) {
-    const res = await fetch(path);
+    // Append cache-bust param after Worker writes to bypass CDN stale cache
+    const url = cacheBustTs ? `${path}?t=${cacheBustTs}` : path;
+    const res = await fetch(url);
     if (!res.ok) throw new Error(`Failed to load ${path} (${res.status})`);
     return res.json();
+  }
+
+  /**
+   * Mark that a Worker write just happened — next static fetches bypass CDN cache.
+   */
+  function bustCache() {
+    cacheBustTs = Date.now();
   }
 
   async function loadRegistry() {
@@ -662,6 +672,7 @@ const Rocktober = (() => {
         return;
       }
 
+      bustCache();
       const sub = (currentRound.submissions || []).find(s => s.trackId === trackId);
       if (sub) sub.votes = (sub.votes || 0) + 1;
 
@@ -1470,6 +1481,7 @@ const Rocktober = (() => {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Submission failed');
+      bustCache();
 
       // Update local state from response (don't re-fetch — static file may be stale)
       if (data.submission) {
@@ -1885,6 +1897,7 @@ const Rocktober = (() => {
 
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to create competition');
+        bustCache();
 
         dom.createCompOverlay.classList.add('hidden');
         dom.createCompForm.reset();
@@ -1963,6 +1976,7 @@ const Rocktober = (() => {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
+        bustCache();
 
         // Update local state from response (don't re-fetch stale static file)
         if (currentRound) {
@@ -1998,6 +2012,7 @@ const Rocktober = (() => {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
+        bustCache();
 
         // Update local state from response (don't re-fetch stale static file)
         if (currentRound) {
@@ -2041,6 +2056,7 @@ const Rocktober = (() => {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
+        bustCache();
 
         alert(`Competition reset! ${data.roundsReset} rounds cleared.`);
         dom.adminOverlay.classList.add('hidden');
@@ -2087,6 +2103,7 @@ const Rocktober = (() => {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
+        bustCache();
 
         input.value = '';
         // Update local config with response data (skip stale static file)
@@ -2168,6 +2185,7 @@ const Rocktober = (() => {
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error);
+          bustCache();
 
           // Update local config with response data (skip stale static file)
           if (data.members && config) {
