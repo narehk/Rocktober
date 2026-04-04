@@ -1471,23 +1471,16 @@ const Rocktober = (() => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Submission failed');
 
-      // Re-fetch the round from source after successful submission
-      // to avoid stale local state causing duplicate cards
-      try {
-        const freshRound = await loadRound(currentSlug, currentRound.day);
-        currentRound = freshRound;
-      } catch {
-        // Fallback: update local state manually
-        if (data.submission) {
-          const subs = currentRound.submissions || [];
-          const idx = subs.findIndex(s => s.submitter === currentUser);
-          if (idx >= 0) {
-            subs[idx] = data.submission;
-          } else {
-            subs.push(data.submission);
-          }
-          currentRound.submissions = subs;
+      // Update local state from response (don't re-fetch — static file may be stale)
+      if (data.submission) {
+        const subs = currentRound.submissions || [];
+        const idx = subs.findIndex(s => s.submitter === currentUser);
+        if (idx >= 0) {
+          subs[idx] = data.submission;
+        } else {
+          subs.push(data.submission);
         }
+        currentRound.submissions = subs;
       }
 
       const phase = getCurrentPhase(currentRound, config);
@@ -1971,8 +1964,15 @@ const Rocktober = (() => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
 
-        // Refresh the round display
-        await refreshRound(viewingRoundNum);
+        // Update local state from response (don't re-fetch stale static file)
+        if (currentRound) {
+          currentRound.phase = data.newPhase;
+          if (data.winner) currentRound.winner = data.winner;
+        }
+        const phase = getCurrentPhase(currentRound, config);
+        renderTheme(currentRound, viewingRoundNum);
+        renderSubmissions(currentRound.submissions, phase, currentRound.day);
+        if (phase === 'results') renderWinner(currentRound);
         updateAdminRoundInfo();
       } catch (err) {
         alert(`Error: ${err.message}`);
@@ -1999,7 +1999,15 @@ const Rocktober = (() => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
 
-        await refreshRound(viewingRoundNum);
+        // Update local state from response (don't re-fetch stale static file)
+        if (currentRound) {
+          currentRound.phase = data.newPhase;
+          if (data.winner) currentRound.winner = data.winner;
+        }
+        const newPhase = getCurrentPhase(currentRound, config);
+        renderTheme(currentRound, viewingRoundNum);
+        renderSubmissions(currentRound.submissions, newPhase, currentRound.day);
+        if (newPhase === 'results') renderWinner(currentRound);
         updateAdminRoundInfo();
       } catch (err) {
         alert(`Error: ${err.message}`);
@@ -2036,8 +2044,24 @@ const Rocktober = (() => {
 
         alert(`Competition reset! ${data.roundsReset} rounds cleared.`);
         dom.adminOverlay.classList.add('hidden');
-        // Reload competition
-        enterCompetition(currentSlug);
+        // Reset local state (don't re-fetch stale static files)
+        if (currentRound) {
+          currentRound.submissions = [];
+          currentRound.votes = [];
+          currentRound.comments = [];
+          currentRound.winner = null;
+          currentRound.phase = 'submission';
+        }
+        const phase = getCurrentPhase(currentRound, config);
+        renderTheme(currentRound, viewingRoundNum);
+        renderSubmissions([], phase, currentRound?.day);
+        toggleSearchPanel(phase);
+        dom.winnerDisplay.classList.add('hidden');
+        renderComments(currentRound);
+        if (leaderboard) {
+          leaderboard.standings = (leaderboard.standings || []).map(s => ({ ...s, wins: 0, totalVotes: 0 }));
+          renderLeaderboard(leaderboard);
+        }
       } catch (err) {
         alert(`Error: ${err.message}`);
       }
@@ -2065,8 +2089,10 @@ const Rocktober = (() => {
         if (!res.ok) throw new Error(data.error);
 
         input.value = '';
-        // Refresh config and re-render member list
-        config = await loadConfig(currentSlug);
+        // Update local config with response data (skip stale static file)
+        if (data.members && config) {
+          config.members = data.members.map((n, i) => ({ name: n, order: i + 1 }));
+        }
         renderAdminMembers();
       } catch (err) {
         alert(`Error: ${err.message}`);
@@ -2143,7 +2169,10 @@ const Rocktober = (() => {
           const data = await res.json();
           if (!res.ok) throw new Error(data.error);
 
-          config = await loadConfig(currentSlug);
+          // Update local config with response data (skip stale static file)
+          if (data.members && config) {
+            config.members = data.members.map((n, i) => ({ name: n, order: i + 1 }));
+          }
           renderAdminMembers();
         } catch (err) {
           alert(`Error: ${err.message}`);
